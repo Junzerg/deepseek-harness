@@ -6,6 +6,8 @@
   box-sizing: border-box;
   height: 46px;
   padding: 0 14px;
+  /* The collapsed sidebar's reopen button hangs over this edge. */
+  padding-inline-start: calc(14px + var(--dsh-sidebar-reopen-clearance, 0px));
   border-bottom: 0.5px solid var(--dsw-alias-border-l1);
   background: var(--dsw-alias-bg-base);
 }

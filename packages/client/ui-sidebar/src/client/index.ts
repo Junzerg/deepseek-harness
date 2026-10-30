@@ -42,6 +42,8 @@ interface WorkspaceNavigation {
 
 /** The right sidebar's toggle, read optionally so this shell does not wait on that plugin. */
 interface RightbarToggle {
+  /** On-screen session target. `null` asks for that session, ignoring the focused element. */
+  commandTarget(element: null): unknown
   toggleExpanded(): void
 }
 
@@ -141,14 +143,9 @@ export function apply(ctx: ClientContext): void {
     openSession: (sessionId) => { workspaceNavigation.openSession(sessionId) },
     toggleRightbar: () => {
       const sidebar = ctx.get('sidebarRight') as RightbarToggle | undefined
-      if (sidebar === undefined) return
-      try {
-        sidebar.toggleExpanded()
-      } catch (error) {
-        // A new-task page can have no mounted session. The control stays visible.
-        if (error instanceof Error && error.message === 'sidebarRight: no session surface is mounted') return
-        throw error
-      }
+      // The click focuses this button, so null asks whether a session is on screen.
+      if (sidebar === undefined || sidebar.commandTarget(null) === undefined) return
+      sidebar.toggleExpanded()
     },
     hooks: { panels, archivedSessionIds, pageTitles },
   })
