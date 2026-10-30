@@ -103,7 +103,7 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(rowDeclarations('.projectRow')?.get('height')).toBe('34px')
     expect(rowDeclarations('.sessionRow')?.get('height')).toBe('32px')
     // One leading status cell for every session row, grouped or flat: the cell
-    // hosts either the row's status dot or the leading seat, and it reserves its
+    // hosts the leading seat, and it reserves its
     // own box, so the title's one shared margin below needs no per-view override.
     expect(rowDeclarations('.slot')?.get('width')).toBe('16px')
     expect(rowDeclarations('.slot')?.get('height')).toBe('20px')
@@ -127,6 +127,16 @@ describe('WorkspaceBrowser.module.css list', () => {
       .toBe('linear-gradient(to left, transparent, #000 12px)')
     expect(rowDeclarations('.sessionRow .title[data-scrolled][data-clipped]')?.get('mask-image'))
       .toBe('linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)')
+  })
+
+  it('sets the wide group label to the compact prototype size and gaps', () => {
+    const header = declarations('.root:not(.rail) .sectionHeader')
+    expect(header?.get('margin-top')).toBe('6px')
+    expect(header?.get('margin-bottom')).toBe('5px')
+    expect(header?.get('padding-left')).toBe('10px')
+    expect(declarations('.sectionHeader')?.get('height')).toBe('36px')
+    expect(declarations('.sectionLabel')?.get('font-size')).toBe('11px')
+    expect(declarations('.sectionLabel')?.get('line-height')).toBe('16px')
   })
 
   it('pins both rail controls to the shared left anchor during the column slide', () => {

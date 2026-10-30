@@ -67,9 +67,15 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* 6px plus the navigation list's 8px trailing margin is the 14px above this
+   row. 5px below it is the gap before the first task. The row stays 36px so
+   the search field and icon buttons keep their size. 10px leading inset
+   lines the title up with the navigation rows. */
 .root:not(.rail) .sectionHeader {
-  margin-top: 2px;
+  margin-top: 6px;
   margin-right: -4px;
+  margin-bottom: 5px;
+  padding-left: 10px;
 }
 
 .sectionLabel {
@@ -79,7 +85,8 @@
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  line-height: 20px;
+  font-size: 11px;
+  line-height: 16px;
   opacity: 1;
   visibility: visible;
   transition:

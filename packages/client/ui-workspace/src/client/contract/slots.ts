@@ -126,13 +126,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Directory-flow hole under the sidebar browsing region (declared by the WorkspaceBrowser entry). */
     'sidebar.workspaces.directoryFlow': { kind: 'single'; scope: 'root'; owner: DirectoryFlowOwnerProps }
     /**
-     * Leading decoration of one Session row, in the 16px cell before the title
-     * that the row's own state dot otherwise occupies. A higher-priority state
-     * (a pending interaction, a new message, live activity) replaces the seat
-     * with that dot for the same row, so an occupant here never renders beside
-     * a status dot and is mounted only by a row whose primary state is idle.
-     * An archived row keeps that cell blank — neither its status dot nor this
-     * seat renders there, and its live status appears on the hover card only.
+     * Leading decoration of one Session row, in the 16px cell before the title.
+     * The row mounts this seat on every unarchived, non-blank Session, including
+     * while a pending interaction, a new message, or live activity is showing.
+     * An archived row keeps that cell blank, and its live status appears on the
+     * hover card only. Session rows draw no status dot.
      */
     'sidebar.session.row.leading': { kind: 'list'; scope: 'root'; inline: true; owner: SessionRowScheduleOwnerProps }
     /**

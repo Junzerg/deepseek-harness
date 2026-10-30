@@ -18,7 +18,7 @@ import {
   HoverCard, IconArchiveOutlineRegular, IconEditOutlineRegular,
   IconEllipsisOutlineRegular, IconFolderCloseRegular, IconFolderOpenRegular,
   IconNewChatOutlineRegular, IconPinFillRegular, IconTrashOutlineRegular,
-  IconTriangleRightFillRegular, IconUnarchiveOutlineRegular, Menu, relativeTime, StateDot, Tooltip, useRowDragPreview,
+  IconTriangleRightFillRegular, IconUnarchiveOutlineRegular, Menu, relativeTime, Tooltip, useRowDragPreview,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -34,9 +34,8 @@ type RowTranslate = WorkspaceBrowserProps['t']
 /**
  * Child-seat renderer threaded from the browser root: the row's action lists,
  * its leading and trailing decorations, and its hover-card section. The leading
- * seat is rendered only while the row's primary state is idle, so a status dot and a
- * leading occupant never share the row; the hover seat only while the row's
- * card is open.
+ * seat renders on every unarchived, non-blank row. The hover seat renders only
+ * while the row's card is open.
  */
 type RowRenderSlots = PropsRenderSlots<
   | 'sidebar.workspaces.session.menu.item'
@@ -445,18 +444,6 @@ function sessionStatuses(
   return [{ state: 'idle', label: t('status.idle') }]
 }
 
-/** Primary status dot plus every status's screen-reader label, shared by the search and session rows. */
-function SessionStatusDots({ statuses }: { statuses: readonly [SessionStatus, ...SessionStatus[]] }) {
-  return (
-    <>
-      <StateDot state={statuses[0].state} />
-      {statuses.map(status => (
-        <span className={css.visuallyHidden} key={status.label}>{status.label}</span>
-      ))}
-    </>
-  )
-}
-
 /** Non-interactive pinned-row marker; the enclosing row remains the only action. */
 function PinnedIndicator({ t }: { t: RowTranslate }) {
   const label = t('row.pinned')
@@ -494,7 +481,6 @@ function SessionHoverContent({ node, cwd, now, renderSlot, t }: {
       {renderSlot('sidebar.session.row.hover', { sessionId: node.id })}
       {statuses.map(status => (
         <div className={css.hoverStatus} key={status.label}>
-          <StateDot state={status.state} />
           <span>{status.label}</span>
         </div>
       ))}
@@ -533,8 +519,6 @@ export function SearchResultItem({
 } & Pick<WorkspaceBrowserProps, 'useSessionAccess'>) {
   const selected = result.id === currentId
   const canUnarchive = useSessionAccess(result.id, 'workspace/unarchiveSession')
-  const statuses = sessionStatuses(result, t)
-  const primaryStatus = statuses[0]
   return (
     <div
       className={clsx(css.searchResultRow, selected && css.selected, result.archived && css.archived)}
@@ -544,14 +528,9 @@ export function SearchResultItem({
       onClick={() => { onOpen(result.id) }}
     >
       <span className={css.searchResultHeading}>
-        {/* Like session rows, the leading slot owns every row marker; on
-            archived rows it stays blank — the grayed row carries the
-            archived look. */}
-        <span className={css.slot}>
-          {!result.archived && primaryStatus.state !== 'idle' && (
-            <SessionStatusDots statuses={statuses} />
-          )}
-        </span>
+        {/* The leading cell stays empty so a search title lines up with a
+            session title. Search rows draw no status dot. */}
+        <span className={css.slot} />
         <span className={css.searchResultTitle}>{result.title || t('session.untitled')}</span>
         {result.archived && canUnarchive && (
           <span className={css.rowActions}>
@@ -579,12 +558,11 @@ export function SearchResultItem({
 }
 
 /**
- * One top-level 32px session row: leading 16px cell (status dot, or the
- * leading seat while the row's primary state is idle), title, relative time or
- * compact pending label, and the row actions menu. A row that owns a state dot
- * keeps that cell and renders no seat, so an ambient automation mark never
- * appears beside the row's own state dot. An archived row keeps the cell blank:
- * neither marker renders there, and its live status stays on the hover card.
+ * One top-level 32px session row: leading 16px cell, title, relative time or
+ * compact pending label, and the row actions menu. The leading cell holds the
+ * leading seat on every unarchived, non-blank row. An archived row keeps that
+ * cell blank, and its live status stays on the hover card. The row draws no
+ * status dot.
  * The row accepts Tab focus and opens with unmodified Enter or Space; descendant controls
  * handle their own activation without opening the row.
  * @param props.node - derived session node.
@@ -633,7 +611,6 @@ export function SessionNodeItem({
   const selected = node.id === currentId
   const statuses = sessionStatuses(node, t)
   const primaryStatus = statuses[0]
-  const showStatus = primaryStatus.state !== 'idle'
   // Archived rows hold their in-place grayed slot, so manual reorder cannot
   // move them. Pinned rows drag within the pinned block: the browser gates
   // their drop targets to fellow pinned rows.
@@ -708,15 +685,10 @@ export function SessionNodeItem({
           drag.drop(rowHalf(e))
         }}
     >
-      {/* Pending interaction and own or descendant activity outrank the
-          finished-but-unviewed reminder, which returns after activity stops
-          and is cleared by opening the session. Archived rows keep the slot
-          blank — the grayed row carries the archived look — and their live
-          status stays on the hover card only. */}
+      {/* Archived rows keep the slot blank — the grayed row carries the
+          archived look — and their live status stays on the hover card only. */}
       <span className={css.slot}>
-        {!row.archived && !row.blank && (showStatus
-          ? <SessionStatusDots statuses={statuses} />
-          : renderSlot('sidebar.session.row.leading', { sessionId: node.id }))}
+        {!row.archived && !row.blank && renderSlot('sidebar.session.row.leading', { sessionId: node.id })}
       </span>
       <span
         ref={titleRef}

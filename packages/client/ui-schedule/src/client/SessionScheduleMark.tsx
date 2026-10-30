@@ -2,9 +2,8 @@
  * Sidebar Session-row clock mark: one Session's active scheduled-task
  * indicator, seated in the row's leading 16px cell before the title.
  *
- * The row offers that cell to this seat only while its own primary state is
- * idle, so an approval request, a new message, or live activity keeps the
- * row's state dot in the same cell and never mounts the mark. The mark
+ * The row offers that cell on every unarchived, non-blank Session, including
+ * while an approval request, a new message, or live activity is showing. The mark
  * projects the one shared Host task catalog onto this Session; it activates,
  * retains, and unarchives nothing, and it never reads a Session log.
  */
@@ -52,7 +51,7 @@ export function SessionScheduleMark({
     >
       <IconClockOutlineRegular size={14} />
       {/* The glyph is aria-hidden, so the count reaches assistive technology
-          only through this label, as the row's status dots do. */}
+          only through this label. */}
       <span className={css.visuallyHidden}>{t('mark.aria', { count: facts.records.length })}</span>
     </span>
   )

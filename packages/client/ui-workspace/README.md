@@ -65,11 +65,11 @@ The keyboard reference exposes New Session, Search sessions, Add workspace, Rena
 
 ### Pending interactions
 
-Session rows render the runtime's live `pendingInteraction` classification: approvals report **Waiting for approval**, plan reviews report **Plan awaiting review**, and ordinary questions report **Waiting for answer**. While an interaction is pending, the row uses the shared warning dot and replaces its trailing update time with **Approval**, **Plan review**, or **Answer**; the full status and relative time remain in hover details. Pending interaction takes precedence over the shared ongoing loader; a finished-but-unviewed Session uses done, while idle remains dot-free in the row and uses the shared idle dot in its hover details. The leading seat renders only while the row's primary status is idle — no pending interaction, no own or descendant activity, and no unviewed completion — so an occupant there never appears beside the row's own status dot. An archived row keeps that cell blank: it shows neither a status dot nor the seat, and its live status appears on the hover card only.
+Session rows render the runtime's live `pendingInteraction` classification: approvals report **Waiting for approval**, plan reviews report **Plan awaiting review**, and ordinary questions report **Waiting for answer**. While an interaction is pending, the row replaces its trailing update time with **Approval**, **Plan review**, or **Answer**; the full status and relative time remain in hover details. Pending interaction takes precedence over own or descendant activity for that trailing label. Session rows and their hover details draw no status dot. The leading seat renders on every unarchived, non-blank row. An archived row keeps that cell blank, and its live status appears on the hover card only.
 
 ### Active Schedule markers
 
-Grouped and flat Session rows show a clock mark when the Session has active scheduled tasks. It is an occupant of the row's `sidebar.session.row.leading` seat, so it renders only on a row whose primary status is idle and never beside the row's own status dot; an archived row keeps that cell blank, and a search result has no leading seat and shows no mark. It is not a button, has no tab stop, and a press on its area does not open the row. The mark's own read and the meaning of its active-task condition belong to [ui-schedule](../ui-schedule/README.md).
+Grouped and flat Session rows show a clock mark when the Session has active scheduled tasks. It is an occupant of the row's `sidebar.session.row.leading` seat, so it renders on every unarchived, non-blank row whose Session has active tasks; an archived row keeps that cell blank, and a search result has no leading seat and shows no mark. It is not a button, has no tab stop, and a press on its area does not open the row. The mark's own read and the meaning of its active-task condition belong to [ui-schedule](../ui-schedule/README.md).
 
 -----
 
@@ -97,7 +97,7 @@ The package is one composition: both target slots are declared by other plugins,
 
 The browser entry declares three root-scoped `list` child seats on each Session row: `sidebar.session.row.leading`, `sidebar.session.row.trailing`, and `sidebar.session.row.hover`. All receive only `sessionId`, which occupants use to address their own data without creating a Session binding. A Session-scoped seat would activate and retain every listed Session.
 
-The leading seat occupies the status cell only while the row's primary status is idle and leaves archived rows blank. The trailing seat accepts non-interactive icons in ascending `order`, after the time label and before the pin marker. Blank rows omit the trailing seat; an empty seat adds no spacing. The hover seat mounts only while the row's hover card is open.
+The leading seat occupies the cell before the title on every unarchived, non-blank row and leaves archived rows blank. The trailing seat accepts non-interactive icons in ascending `order`, after the time label and before the pin marker. Blank rows omit the trailing seat; an empty seat adds no spacing. The hover seat mounts only while the row's hover card is open.
 
 On hover-capable devices, hovering a Session row, giving keyboard focus to the row or its actions, or opening its menu replaces the time, trailing icons, and pin marker with action buttons. A pointer click does not keep the buttons visible after the pointer leaves.
 

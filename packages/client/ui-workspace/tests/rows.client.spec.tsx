@@ -272,8 +272,9 @@ describe('workspace browser rows', () => {
 
     view.rerender(<SessionNodeItem node={{ ...idle, running: true }} currentId={undefined} now={0}
       onOpen={vi.fn()} t={t} />)
-    // A row that gains a state dot keeps that dot in the same cell.
-    expect(screen.getByText('Flat Session').previousElementSibling?.querySelector('[data-state="ongoing"]')).toBeTruthy()
+    // A running row keeps the same empty leading cell. Rows draw no status dot.
+    expect(screen.getByText('Flat Session').previousElementSibling?.querySelector('[data-state]')).toBeNull()
+    expect(screen.getByText('Flat Session').previousElementSibling?.children).toHaveLength(0)
   })
 
   it('renders a selected content-search row and opens only its session', () => {
@@ -294,8 +295,8 @@ describe('workspace browser rows', () => {
     expect(row.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByText('Workspace context')).toBeTruthy()
     expect(screen.getByText('matching message excerpt')).toBeTruthy()
-    expect(row.querySelector('[data-state="ongoing"]')).toBeTruthy()
-    expect(screen.getByText('进行中')).toBeTruthy()
+    expect(row.querySelector('[data-state]')).toBeNull()
+    expect(screen.queryByText('进行中')).toBeNull()
     expect(row.hasAttribute('draggable')).toBe(false)
     fireEvent.click(row)
     expect(onOpen).toHaveBeenCalledWith(result.id)
@@ -320,20 +321,17 @@ describe('workspace browser rows', () => {
   })
 
   it.each([
-    ['approval', '等待审批'],
-    ['plan-review', '计划待审'],
-    ['question', '等待回答'],
-  ] as const)('shows %s ahead of running in search results', (pendingInteraction, label) => {
+    'approval',
+    'plan-review',
+    'question',
+  ] as const)('draws no status dot on a search result that is %s while running', (pendingInteraction) => {
     const result: SearchResultNode = {
       id: sid(pendingInteraction), title: 'Needs input', workspace: 'Project',
       pendingInteraction, running: true, runningSubagentCount: 0, completed: false, archived: false,
     }
     render(<SearchResultItem result={result} currentId={undefined}
       onOpen={vi.fn()} onUnarchive={vi.fn()} useSessionAccess={allowAllAccess.useSessionAccess} t={t} />)
-    const row = screen.getByRole('treeitem')
-    expect(row.querySelector('[data-state="warning"]')).toBeTruthy()
-    expect(row.querySelector('[data-state="ongoing"]')).toBeNull()
-    expect(screen.getByText(label)).toBeTruthy()
+    expect(screen.getByRole('treeitem').querySelector('[data-state]')).toBeNull()
   })
 
   it('renders an active Workspace and keeps its create action separate from toggling', () => {
@@ -524,7 +522,7 @@ describe('workspace browser rows', () => {
     }
   })
 
-  it('shows the green done dot only on a finished, unviewed session (live activity wins the slot)', () => {
+  it('draws no status dot for completion, live activity, or descendant activity', () => {
     const renderRow = (over: Partial<SessionNode>) => render(
       <SessionNodeItem
         node={{
@@ -534,25 +532,11 @@ describe('workspace browser rows', () => {
         currentId={undefined} now={0} onOpen={vi.fn()} t={t}
       />,
     )
-    const stateDot = (view: ReturnType<typeof renderRow>) =>
-      view.container.querySelector('[data-state]')
-    // No completion reminder, not running: no state dot at all.
-    const plain = renderRow({})
-    expect(stateDot(plain)).toBeNull()
-    plain.unmount()
-    // Completed while unviewed: the green done dot.
-    const done = renderRow({ completed: true })
-    expect(done.container.querySelector('[data-state="done"]')).not.toBeNull()
-    done.unmount()
-    // Running wins the slot: the animated ongoing dot, no done dot.
-    const running = renderRow({ completed: true, running: true })
-    expect(running.container.querySelector('[data-state="ongoing"]')).not.toBeNull()
-    expect(running.container.querySelector('[data-state="done"]')).toBeNull()
-    running.unmount()
-    // Descendant activity also wins until the last running descendant stops.
-    const delegated = renderRow({ completed: true, runningSubagentCount: 1 })
-    expect(delegated.container.querySelector('[data-state="ongoing"]')).not.toBeNull()
-    expect(delegated.container.querySelector('[data-state="done"]')).toBeNull()
+    for (const over of [{}, { completed: true }, { completed: true, running: true }, { completed: true, runningSubagentCount: 1 }]) {
+      const view = renderRow(over)
+      expect(view.container.querySelector('[data-state]')).toBeNull()
+      view.unmount()
+    }
   })
 
   it('shows descendant activity without describing an idle parent as running', () => {
@@ -564,13 +548,13 @@ describe('workspace browser rows', () => {
       }
       render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
       const row = screen.getByRole('treeitem')
-      expect(row.querySelector('[data-state="ongoing"]')).not.toBeNull()
-      expect(screen.getByText('2 个子智能体运行中')).toBeTruthy()
+      expect(row.querySelector('[data-state]')).toBeNull()
       expect(screen.queryByText('进行中')).toBeNull()
 
       fireEvent.pointerEnter(row.parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
-      expect(screen.getAllByText('2 个子智能体运行中')).toHaveLength(2)
+      expect(screen.getAllByText('2 个子智能体运行中')).toHaveLength(1)
+      expect(screen.queryByText('进行中')).toBeNull()
     } finally {
       vi.useRealTimers()
     }
@@ -585,14 +569,12 @@ describe('workspace browser rows', () => {
       }
       render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
       const row = screen.getByRole('treeitem')
-      expect(row.querySelectorAll('[data-state="ongoing"]')).toHaveLength(1)
-      expect(screen.getByText('进行中')).toBeTruthy()
-      expect(screen.getByText('1 个子智能体运行中')).toBeTruthy()
+      expect(row.querySelector('[data-state]')).toBeNull()
 
       fireEvent.pointerEnter(row.parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
-      expect(screen.getAllByText('进行中')).toHaveLength(2)
-      expect(screen.getAllByText('1 个子智能体运行中')).toHaveLength(2)
+      expect(screen.getAllByText('进行中')).toHaveLength(1)
+      expect(screen.getAllByText('1 个子智能体运行中')).toHaveLength(1)
     } finally {
       vi.useRealTimers()
     }
@@ -605,13 +587,11 @@ describe('workspace browser rows', () => {
     }
     render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
     const row = screen.getByRole('treeitem')
-    expect(row.querySelector('[data-state="warning"]')).not.toBeNull()
-    expect(row.querySelector('[data-state="ongoing"]')).toBeNull()
-    expect(screen.getByText('等待回答')).toBeTruthy()
-    expect(screen.getByText('1 个子智能体运行中')).toBeTruthy()
+    expect(row.querySelector('[data-state]')).toBeNull()
+    expect(screen.getByText('Needs input').nextElementSibling?.textContent).toBe('待回答')
   })
 
-  it('shows the green done dot on a finished search result row', () => {
+  it('draws no status dot on a finished search result row', () => {
     render(<SearchResultItem
       result={{
         id: sid('result'), title: 'Done', workspace: 'Workspace', running: false,
@@ -620,7 +600,7 @@ describe('workspace browser rows', () => {
       currentId={undefined} onOpen={vi.fn()} onUnarchive={vi.fn()}
       useSessionAccess={allowAllAccess.useSessionAccess} t={t}
     />)
-    expect(screen.getByRole('treeitem').querySelector('[data-state="done"]')).not.toBeNull()
+    expect(screen.getByRole('treeitem').querySelector('[data-state]')).toBeNull()
   })
 
   it('workspace row menu opens on the ellipsis, renames, and shows the danger delete row', () => {
@@ -1134,7 +1114,7 @@ describe('workspace browser rows', () => {
       // Card body: full title + relative time + running status.
       expect(screen.getAllByText('Hovered')).toHaveLength(2)
       expect(screen.getByText('1分钟前')).toBeTruthy()
-      expect(screen.getAllByText('进行中')).toHaveLength(2)
+      expect(screen.getAllByText('进行中')).toHaveLength(1)
       fireEvent.pointerLeave(wrapper)
       // Menu open (disabled=true) suppresses the card for the same hover.
       fireEvent.click(screen.getByRole('button', { name: '会话“Hovered”的操作' }))
@@ -1160,22 +1140,21 @@ describe('workspace browser rows', () => {
       const view = render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
       const row = screen.getByRole('treeitem')
       const title = screen.getByText('Needs input')
-      expect(row.querySelector('[data-state="warning"]')).toBeTruthy()
-      expect(row.querySelector('[data-state="ongoing"]')).toBeNull()
-      expect(row.textContent).toContain(label)
+      expect(row.querySelector('[data-state]')).toBeNull()
       expect(title.nextElementSibling?.textContent).toBe(compactLabel)
       expect(row.querySelector('[class*="time"]')?.getAttribute('aria-hidden')).toBe('true')
       expect(row.textContent).not.toContain('刚刚')
 
       view.rerender(<SessionNodeItem node={{ ...node, running: false }} currentId={undefined} now={0}
         onOpen={vi.fn()} t={t} />)
-      expect(screen.getByRole('treeitem').querySelector('[data-state="warning"]')).toBeTruthy()
+      expect(screen.getByRole('treeitem').querySelector('[data-state]')).toBeNull()
 
       fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
-      expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(2)
+      // The compact trailing label repeats this string only for plan review.
+      expect(screen.getAllByText(label)).toHaveLength(label === compactLabel ? 2 : 1)
       expect(screen.getByText('刚刚')).toBeTruthy()
-      expect(document.querySelectorAll('[data-state="warning"]')).toHaveLength(2)
+      expect(document.querySelector('[data-state]')).toBeNull()
     } finally {
       vi.useRealTimers()
     }
@@ -1207,7 +1186,8 @@ describe('workspace browser rows', () => {
       render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
       fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
-      expect(screen.getByText('空闲').parentElement?.querySelector('[data-state="idle"]')).not.toBeNull()
+      expect(screen.getByText('空闲')).toBeTruthy()
+      expect(document.querySelector('[data-state]')).toBeNull()
       expect(screen.getAllByText('刚刚')).toHaveLength(2)
     } finally {
       vi.useRealTimers()
@@ -1224,8 +1204,7 @@ describe('workspace browser rows', () => {
       render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
       fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
       act(() => { vi.advanceTimersByTime(800) })
-      // Row's visually-hidden reminder label plus the hover card's status line.
-      expect(screen.getAllByText('已完成')).toHaveLength(2)
+      expect(screen.getAllByText('已完成')).toHaveLength(1)
     } finally {
       vi.useRealTimers()
     }
@@ -1473,13 +1452,12 @@ describe('session row decoration seats', () => {
     expect(onOpen).not.toHaveBeenCalled()
   })
 
-  it('offers the leading seat only while the row is idle, and no state dot beside it', () => {
+  it('offers the leading seat on an idle row and draws no status dot', () => {
     const renderSlot = seatSpy()
     const view = renderRow(idle, renderSlot)
     const row = screen.getByRole('treeitem')
     expect(row.querySelector('[data-seat="sidebar.session.row.leading"]')).toBeTruthy()
     expect(renderSlot).toHaveBeenCalledWith('sidebar.session.row.leading', { sessionId: idle.id })
-    // Priority replacement: the idle row shows the clock seat INSTEAD of a dot.
     expect(row.querySelector('[data-state]')).toBeNull()
     // The seat sits in the leading 16px cell, before the clipped title: the
     // cell is the row's first element, and the title follows the cell.
@@ -1503,15 +1481,13 @@ describe('session row decoration seats', () => {
     ['live activity', { ...idle, running: true }, 'ongoing'],
     ['a pending approval', { ...idle, pendingInteraction: 'approval' as const }, 'warning'],
     ['a running subagent', { ...idle, runningSubagentCount: 2 }, 'ongoing'],
-  ])('replaces the leading seat with the %s dot', (_label, node, state) => {
+  ])('keeps the leading seat through %s and draws no status dot', (_label, node, _state) => {
     const renderSlot = seatSpy()
     renderRow(node, renderSlot)
     const row = screen.getByRole('treeitem')
-    // The dot occupies the same leading cell the idle row gave the seat.
-    const dotCell = row.firstElementChild
-    expect(dotCell?.querySelector(`[data-state="${state}"]`)).toBeTruthy()
-    expect(row.querySelector('[data-seat="sidebar.session.row.leading"]')).toBeNull()
-    expect(renderSlot).not.toHaveBeenCalledWith('sidebar.session.row.leading', expect.anything())
+    expect(row.querySelector('[data-state]')).toBeNull()
+    expect(row.querySelector('[data-seat="sidebar.session.row.leading"]')).toBeTruthy()
+    expect(renderSlot).toHaveBeenCalledWith('sidebar.session.row.leading', { sessionId: node.id })
   })
 
   it.each<[string, SessionNode]>([

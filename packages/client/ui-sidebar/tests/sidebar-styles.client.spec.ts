@@ -43,6 +43,23 @@ describe('SidebarRoot.module.css', () => {
 
 
 
+  it('rests New Session like the other navigation rows', () => {
+    const row = declarations('.newSession')
+    expect(row?.get('background')).toBe('transparent')
+    expect(row?.get('font-weight')).toBe('400')
+    expect(row?.get('color')).toBe('var(--dsw-alias-label-secondary)')
+    expect(declarations('.newSession:hover')?.get('background')).toBe('var(--dsw-specific-task-row-hover)')
+  })
+
+  it('separates navigation hover from the selected page', () => {
+    expect(declarations('.panelRow:hover')?.get('background')).toBe('var(--dsw-specific-task-row-hover)')
+    expect(declarations('.panelRow[aria-expanded=\'true\']')?.get('background')).toBe('var(--dsw-specific-task-row-hover)')
+    const selected = declarations('.panelRow.panelActive')
+    expect(selected?.get('background')).toBe('var(--dsw-specific-task-row-selected)')
+    expect(selected?.get('color')).toBe('var(--dsw-specific-task-row-selected-ink)')
+    expect(selected?.get('font-weight')).toBe('600')
+  })
+
   it('keeps the mark beside a two-line brand label', () => {
     expect(declarations('.brandIdentity')?.get('align-items')).toBe('center')
     expect(declarations('.brandText')?.get('flex-direction')).toBe('column')
