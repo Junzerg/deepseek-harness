@@ -755,15 +755,16 @@ export interface StoredFactory {
 }
 
 /**
- * A list-entry display label: a plain string, or a thunk re-evaluated per
- * read so registration-time text (nav rows, tabs) follows the active locale
+ * A list or keyed entry's display label: a plain string, or a thunk
+ * re-evaluated per read so registration-time text follows the active locale
  * without re-registration. Owners resolve through {@link resolveSlotLabel}.
  */
 export type SlotLabel = string | (() => string)
 
 /**
- * Kind shape fields carried in register options (keyed dispatch key; list
- * id/order/label; chain select/priority; non-chain priority = cell shadowing rank).
+ * Kind shape fields carried in register options (keyed dispatch key and
+ * optional page label; list id/order/label; chain select/priority; non-chain
+ * priority = cell shadowing rank).
  */
 export type KindOptions<
   K extends keyof SlotMap & string,
@@ -772,6 +773,8 @@ export type KindOptions<
 > =
   SlotMap[K]['kind'] extends 'keyed' ? {
     key: EntryKey
+    /** Page name for this key. A thunk is re-read with the active locale. */
+    label?: SlotLabel
     /** Cell shadowing rank (ascending, default 0, lowest renders; same key + same priority throws — see {@link SlotCore.register}). */
     priority?: number
   }
@@ -1149,7 +1152,7 @@ export class SlotCore {
    *
    * @param options - registration options: target `name`, `children`
    * declaration table, `store` seat, `inject` business-face factory, kind
-   * shape fields (keyed `key`; list `id`/`order`/`label`).
+   * shape fields (keyed `key` and optional `label`; list `id`/`order`/`label`).
    * @param component - component honoring the five-share composed props
    * contract ({@link ComposedProps}); checked at this call site.
    * @returns disposer removing the registration and its declarations

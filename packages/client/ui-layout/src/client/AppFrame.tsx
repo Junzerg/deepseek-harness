@@ -13,13 +13,18 @@ import css from './AppFrame.module.css'
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.bottom' | 'shell.overlay'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.bottom' | 'shell.topbar' | 'shell.overlay'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'layout'>
 
-/** Center column grid item (session-body building block). */
-function CenterColumn(props: { children?: ReactNode }) {
-  return <div className={css.centerCol}>{props.children}</div>
+/** Center column: the top bar, then the panel that fills the rest of the column. */
+function CenterColumn(props: { topbar?: ReactNode; children?: ReactNode }) {
+  return (
+    <div className={css.centerCol}>
+      {props.topbar}
+      <div className={css.centerBody}>{props.children}</div>
+    </div>
+  )
 }
 
 /** Subscribe to the main key without subscribing the column frame to each panel id. */
@@ -83,6 +88,9 @@ export function AppFrame({
   const main = useMemo(() => (
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
+  const topbar = useMemo(() => renderSlot('shell.topbar', {
+    rightbarShown: layoutInfo.rightbarShown,
+  }), [renderSlot, layoutInfo.rightbarShown])
   const overlays = useMemo(() => renderSlot('shell.overlay', {}), [renderSlot])
 
   return (
@@ -106,7 +114,7 @@ export function AppFrame({
         usePanelInfo={usePanelInfo}
       />
       <div className={css.sidebarCol} aria-hidden={sidebarCollapsed || undefined}>{sidebar}</div>
-      <CenterColumn>{main}</CenterColumn>
+      <CenterColumn topbar={topbar}>{main}</CenterColumn>
       <RightbarColumn>
         {renderSlot('rightbar', { width: RIGHTBAR_WIDTH, viewportWidth: viewport, canShow: true })}
       </RightbarColumn>

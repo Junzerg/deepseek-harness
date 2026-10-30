@@ -90,6 +90,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'shell.bottom': { kind: 'single'; scope: 'root' }
     /**
+     * The center column's top bar, above every main panel. It stays mounted
+     * across panel changes and receives whether the right column is open.
+     */
+    'shell.topbar': { kind: 'single'; scope: 'root'; owner: TopbarOwnerProps }
+    /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers. Deliberately generic and unowned by any feature: a badge, a
      * toast stack or a status pill all belong here, and entries order among
@@ -114,6 +119,12 @@ export interface SidebarOwnerProps {
   collapsed: boolean
   /** Fixed navigation column width in px. */
   width: number
+}
+
+/** Center-column top bar owner share. */
+export interface TopbarOwnerProps {
+  /** Whether the right column is currently showing its panel. */
+  rightbarShown: boolean
 }
 
 /** Right column owner share: resolved normal geometry and opening eligibility. */
@@ -164,6 +175,7 @@ export function apply(ctx: ClientContext): void {
         'main': { kind: 'keyed', scope: 'root' },
         'rightbar': { kind: 'single', scope: 'root' },
         'shell.bottom': { kind: 'single', scope: 'root' },
+        'shell.topbar': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       store,

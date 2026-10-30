@@ -6,6 +6,7 @@ import {
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { createSnapshotStore, type ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { apply, inject, type ViewTab } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 usePinnedBrowserLanguages('zh-CN')
@@ -98,6 +99,7 @@ describe('target-neutral Conversation apply wiring', () => {
     }, (_props: { renderSlot?: unknown }) => null)
     b.runtime.renderRoot()
     expect(b.runtime.slots.entries('main').map(row => row.options.key)).toEqual(['conversation'])
+    expect(resolveSlotLabel(b.runtime.slots.entries('main')[0]?.options.label)).toBe('新建任务')
     expect(b.runtime.slots.entries('main.conversation')).toHaveLength(1)
     expect(b.runtime.slots.spec('main.conversation'))
       .toEqual({ kind: 'single', scope: 'session-maybe' })

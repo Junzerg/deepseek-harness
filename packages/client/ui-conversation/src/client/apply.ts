@@ -574,6 +574,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     yield slots.register({
       name: 'main',
       key: 'conversation',
+      label: () => t('page.title'),
       children: { 'main.conversation': { kind: 'single', scope: 'session-maybe' } },
     }, ConversationPanel)
     yield registerConversationRoot()

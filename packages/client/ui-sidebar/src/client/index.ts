@@ -3,6 +3,7 @@ import type {} from '@deepseek-ai/dsh-client-product-analytics/client'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -14,6 +15,7 @@ import type { SidebarPanelMetadata, SidebarRootInjected } from './contract/slots
 import { createPanelPins } from './panel-pins.ts'
 import { PlaceholderPage, NAV_PAGE_IDS, placeholderPanelId, type PlaceholderInjected } from './MorePage.tsx'
 import { SidebarRoot } from './SidebarRoot.tsx'
+import { WorkbenchTopbar, type MainPageTitle, type TopbarInjected } from './WorkbenchTopbar.tsx'
 import { en, zh, type SidebarKey } from './locales.ts'
 
 export type {
@@ -35,6 +37,12 @@ const NS = 'sidebar'
 
 interface WorkspaceNavigation {
   startSession(workspaceId?: Parameters<SidebarRootInjected['startSession']>[0]): void
+  openSession(sessionId: string): void
+}
+
+/** The right sidebar's toggle, read optionally so this shell does not wait on that plugin. */
+interface RightbarToggle {
+  toggleExpanded(): void
 }
 
 /** Services required by the sidebar plugin. */
@@ -46,6 +54,7 @@ export const inject = ['slots', 'layout', 'uiWorkspace', 'locale', 'shortcuts']
 export function apply(ctx: ClientContext): void {
   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar: dictionaries')
+  const t = ctx.locale.bind(NS)
   const panels = createSnapshotStore<readonly SidebarPanelMetadata[]>([])
   const syncPanels = (): void => {
     const next = ctx.slots.entriesOfSlot('sidebar.panellist').map(({ options }) => {
@@ -62,6 +71,23 @@ export function apply(ctx: ClientContext): void {
   }
   ctx.effect(() => ctx.slots.subscribe('sidebar.panellist', syncPanels), 'ui-sidebar: panel entries')
   ctx.effect(() => ctx.locale.subscribe(syncPanels), 'ui-sidebar: panel labels')
+  const pageTitles = createSnapshotStore<readonly MainPageTitle[]>([])
+  const syncPageTitles = (): void => {
+    const next = ctx.slots.entriesOfSlot('main').flatMap((entry) => {
+      const key = entry.options.key
+      const label = resolveSlotLabel(entry.options.label)
+      if (key === undefined || label === undefined || label === '') return []
+      return [{ key, label }]
+    })
+    const previous = pageTitles.getSnapshot()
+    if (previous.length === next.length && previous.every((page, index) => {
+      const candidate = next[index]
+      return candidate !== undefined && page.key === candidate.key && page.label === candidate.label
+    })) return
+    pageTitles.set(next)
+  }
+  ctx.effect(() => ctx.slots.subscribe('main', syncPageTitles), 'ui-sidebar: page titles')
+  ctx.effect(() => ctx.locale.subscribe(syncPageTitles), 'ui-sidebar: page title labels')
   const panelPins = createPanelPins()
   const entryActions = {
     getSnapshot: () => ctx.slots.entriesOfSlot('sidebar.panellist.actions').length > 0,
@@ -94,8 +120,43 @@ export function apply(ctx: ClientContext): void {
   for (const page of NAV_PAGE_IDS) {
     ctx.slots.inject('main', () => ctx.slots.register({
       name: 'main', key: placeholderPanelId(page), locale: NS,
+      label: () => t(`panels.${page}`),
       inject: (): PlaceholderInjected => ({ page }),
     }, PlaceholderPage))
   }
+  const archivedSessionIds = createSnapshotStore<readonly string[]>([])
+  ctx.effect(() => {
+    const workspaces = ctx.get('workspaces') as IWorkspaces | undefined
+    if (workspaces === undefined) return () => {}
+    const publish = (): void => {
+      const next = workspaces.list.getSnapshot().archivedSessionIds
+      const previous = archivedSessionIds.getSnapshot()
+      if (previous.length === next.length && previous.every((id, index) => id === next[index])) return
+      archivedSessionIds.set(next)
+    }
+    publish()
+    return workspaces.list.subscribe(publish)
+  }, 'ui-sidebar: archived sessions')
+  const topbarInject = (): TopbarInjected => ({
+    openSession: (sessionId) => { workspaceNavigation.openSession(sessionId) },
+    toggleRightbar: () => {
+      const sidebar = ctx.get('sidebarRight') as RightbarToggle | undefined
+      if (sidebar === undefined) return
+      try {
+        sidebar.toggleExpanded()
+      } catch (error) {
+        // A new-task page can have no mounted session. The control stays visible.
+        if (error instanceof Error && error.message === 'sidebarRight: no session surface is mounted') return
+        throw error
+      }
+    },
+    hooks: { panels, archivedSessionIds, pageTitles },
+  })
+  ctx.slots.inject('shell.topbar', () => ctx.slots.register({
+    name: 'shell.topbar',
+    locale: NS,
+    inject: topbarInject,
+  }, WorkbenchTopbar))
   syncPanels()
+  syncPageTitles()
 }

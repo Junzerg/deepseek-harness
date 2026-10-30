@@ -67,6 +67,12 @@ interface ChromeRow {
 
 const CHROME_ROWS: readonly ChromeRow[] = [
   {
+    file: 'client/ui-sidebar/src/client/WorkbenchTopbar.module.css',
+    selector: '.bar',
+    markup: 'client/ui-sidebar/src/client/WorkbenchTopbar.tsx',
+    height: ['height', '46px'],
+  },
+  {
     file: 'client/ui-settings-account/src/client/OnboardingSurface.module.css',
     selector: '.dragBand',
     markup: 'client/ui-settings-account/src/client/OnboardingSurface.tsx',

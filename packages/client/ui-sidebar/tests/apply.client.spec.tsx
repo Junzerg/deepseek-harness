@@ -6,6 +6,7 @@ import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { TopbarInjected } from '../src/client/WorkbenchTopbar.tsx'
 import type { SidebarRootInjected } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytics/client'
@@ -33,7 +34,7 @@ async function bench(declare = true) {
   if (ctx === undefined) throw new Error('the sidebar fixture owner did not activate')
   await ctx.plugin(SlotRegistry).await()
   const layout = { selectPanel: vi.fn() }
-  const uiWorkspace = { startSession: vi.fn() }
+  const uiWorkspace = { startSession: vi.fn(), openSession: vi.fn() }
   ctx.provide('shortcuts', { catalog: createSnapshotStore([]) } as never)
   ctx.provide('layout', layout)
   ctx.provide('uiWorkspace', uiWorkspace as never)
@@ -44,6 +45,7 @@ async function bench(declare = true) {
       { name: 'root', children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'main': { kind: 'keyed', scope: 'root' },
+        'shell.topbar': { kind: 'single', scope: 'root' },
       } },
       SidebarFrame,
     )
@@ -64,6 +66,8 @@ describe('ui-sidebar apply', () => {
     const b = await bench()
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     expect(b.slots.entries('sidebar')).toHaveLength(1)
+    expect(b.slots.entries('shell.topbar')).toHaveLength(1)
+    expect(b.slots.entries('shell.topbar')[0]!.locale).toBe('sidebar')
     expect(b.slots.spec('sidebar.brand.mark')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.spec('sidebar.brand.name')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.slots.spec('sidebar.workspaces')).toEqual({ kind: 'single', scope: 'root' })
@@ -160,6 +164,69 @@ describe('ui-sidebar apply', () => {
       await panel.dispose()
       await sidebar.dispose()
     }
+  })
+
+  it('hides archived sessions and toggles the right sidebar only for a mounted session', async () => {
+    const archived = createSnapshotStore({ archivedSessionIds: ['old'] as readonly string[] })
+    const b = await bench()
+    const toggleExpanded = vi.fn()
+    b.ctx.provide('workspaces', { list: archived } as never)
+    b.ctx.provide('sidebarRight', { toggleExpanded } as never)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const injected = (b.slots.entries('shell.topbar')[0]!.inject as unknown as () => TopbarInjected)()
+    expect(injected.hooks.archivedSessionIds.getSnapshot()).toEqual(['old'])
+    archived.set({ archivedSessionIds: ['old'] })
+    expect(injected.hooks.archivedSessionIds.getSnapshot()).toEqual(['old'])
+    archived.set({ archivedSessionIds: ['old', 'live'] })
+    expect(injected.hooks.archivedSessionIds.getSnapshot()).toEqual(['old', 'live'])
+    injected.openSession('live')
+    expect(b.uiWorkspace.openSession).toHaveBeenCalledExactlyOnceWith('live')
+    injected.toggleRightbar()
+    expect(toggleExpanded).toHaveBeenCalledOnce()
+    toggleExpanded.mockImplementationOnce(() => {
+      throw new Error('sidebarRight: no session surface is mounted')
+    })
+    expect(() => { injected.toggleRightbar() }).not.toThrow()
+    toggleExpanded.mockImplementationOnce(() => { throw new Error('sidebarRight: refused') })
+    expect(() => { injected.toggleRightbar() }).toThrow('sidebarRight: refused')
+    toggleExpanded.mockImplementationOnce(() => { throw 'sidebarRight: refused' })
+    expect(() => { injected.toggleRightbar() }).toThrow('sidebarRight: refused')
+  })
+
+  it('leaves the task menu unfiltered when no workspace service is mounted', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const injected = (b.slots.entries('shell.topbar')[0]!.inject as unknown as () => TopbarInjected)()
+    expect(injected.hooks.archivedSessionIds.getSnapshot()).toEqual([])
+    expect(() => { injected.toggleRightbar() }).not.toThrow()
+  })
+
+  it('carries each main panel label into the top bar', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const injected = (b.slots.entries('shell.topbar')[0]!.inject as unknown as () => TopbarInjected)()
+    expect(injected.hooks.pageTitles.getSnapshot()).toEqual([
+      { key: 'sidebar-experts', label: 'Experts·Skills·Connectors' },
+      { key: 'sidebar-library', label: 'Library' },
+      { key: 'sidebar-assistant', label: 'Assistant' },
+      { key: 'sidebar-project', label: 'Projects' },
+      { key: 'sidebar-more', label: 'More' },
+    ])
+    await b.ctx.plugin({
+      inject: ['slots'],
+      apply(ctx: Context) {
+        ctx.slots.register({ name: 'main', key: 'bare' }, () => null)
+        ctx.slots.register({ name: 'main', key: 'plugins', label: () => '插件' }, () => null)
+      },
+    }).await()
+    expect(injected.hooks.pageTitles.getSnapshot()).toEqual([
+      { key: 'sidebar-experts', label: 'Experts·Skills·Connectors' },
+      { key: 'sidebar-library', label: 'Library' },
+      { key: 'sidebar-assistant', label: 'Assistant' },
+      { key: 'sidebar-project', label: 'Projects' },
+      { key: 'sidebar-more', label: 'More' },
+      { key: 'plugins', label: '插件' },
+    ])
   })
 
   it('removes the entry and child declaration on teardown', async () => {
