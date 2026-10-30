@@ -154,3 +154,5 @@ Models 页面包含 **DeepSeek 账号**（`deepseek-account`，英文为 **DeepS
 无。
 
 </details>
+
+`completeApiKeySignIn` 在接收手动填写的公司网关 Key 前完成模型发现与默认模型选择；账号 provider 负责激活凭证并报告失败。

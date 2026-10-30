@@ -57,3 +57,5 @@ No model request prefix changes.
 ### Dev Note
 
 The [desktop login decision](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.md) records cancellation and storage ownership.
+
+`completeApiKeySignIn` completes company model discovery and default selection before accepting a manually supplied gateway key; the account provider owns activation and reports failures.

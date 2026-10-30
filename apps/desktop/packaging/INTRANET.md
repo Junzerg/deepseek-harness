@@ -1,0 +1,21 @@
+# Intranet release reference
+
+Base procedure: [packaging README](README.zh.md) §内网更新. This reference owns the server facts and release constraints.
+
+### Server (172.28.236.3:18765, offline)
+
+- This development machine cannot reach the intranet server. Do not probe it directly or assume SSH access. Build locally and provide exact commands for the user to run on an intranet Windows machine or on 172.28.236.3; use the returned output for diagnosis and release verification.
+- Working root `/data/lingxi-office`. Release dirs accumulate at `releases/<version>/` (each has its own Dockerfile); a distribution image embeds ALL versions — every release `cp -a`s the previous release dir forward; never prune history.
+- The live 18765 service is a compose stack: `/data/lingxi-office/server/compose.yaml`, project `lingxi-office`, services `versions` (nginx image) + `company-login` (node:22-slim, IAM login). Publish/rollback = set `VERSIONS_IMAGE` in `server/.env`, then `docker compose -p lingxi-office up -d --no-build`. Never touch the STG stack (`lingxi-stg-*`, `DEPLOY-STG.md`, version `…28.4-STG`) or the host's OceanBase/Redis.
+
+### Naming
+
+- Overlay tarball: `lingxi-office-release-<version>.tar.gz`. Image: one bare tag `lingxi-office-distribution:<version>` per release; the legacy `-public` suffix exists only on old tags (rollback targets). Verification runs the same tag as a throwaway `*-test` container on port 18766.
+- Feed versions strictly `<upstream-base>.<YYYYMMDD>.<index>`; builds that must not ride the feed (e.g. STG) carry a distinguishing version marker. `nightly.yml` is frozen — installed clients resolve the channel name.
+- Local staging `apps/desktop/.desktop-build/intranet-site/` is the accumulating source of truth for `versions/releases.json`. Extend it with `node apps/desktop/scripts/prepare-intranet-site.mjs <unsigned-artifacts> <site-dir>` (appends + sorts, refuses duplicate versions). Never truncate history; for installers not on this machine, take `bytes` from the live server's `releases.json`.
+
+- The container-internal distribution root is `/srv/lingxi-office`; Nginx `root` and Dockerfile `COPY` targets live in `apps/desktop/config/`. Keep client-visible URL paths `/updates/` and `/versions/` unchanged.
+
+### Publish checklist
+
+Verify tarball SHA-256 → assemble release dir (`cp -a` previous + extract overlay + copy the update exe to `versions/<v>/lingxi-office-<v>.exe`) → `docker build --build-arg NGINX_IMAGE=nginx:alpine` (the fixed base image already on the server) → `-test` container: `releases.json` newest-first, feed points at the new version, every `/versions/<v>/*.exe` answers 200, company-login health 4xx-not-5xx → flip `VERSIONS_IMAGE` → re-check live URLs. Acceptance on an intranet Windows machine: auto-update from the previous version plus one fresh install.

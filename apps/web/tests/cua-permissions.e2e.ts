@@ -82,7 +82,7 @@ it.skipIf(process.platform !== 'darwin')('keeps system requests pending until fr
   const plugins = page.locator('[data-plugin-panel]')
   const openDetails = page.getByRole('button', { name: 'View Computer use', exact: true })
   await openDetails.scrollIntoViewIfNeeded()
-  expect(await plugins.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+  expect(await plugins.locator('[data-plugin-body]').evaluate(element => element.scrollTop)).toBeGreaterThan(0)
   await openDetails.click()
   const panel = page.locator('[data-cua-settings]')
   const accessibility = panel.getByRole('group', { name: 'Accessibility', exact: true })
@@ -99,7 +99,7 @@ it.skipIf(process.platform !== 'darwin')('keeps system requests pending until fr
   await expect.poll(() => panel.getAttribute('aria-busy')).toBe('false')
   await compareOrRefreshGolden(expected, await captureStableAria(page, '[data-cua-settings]', scaffold.workspaceCwd), webSnapshotMode())
   try {
-    for (const width of [1680, 390]) {
+    for (const width of [1680, 570]) {
       await page.setViewportSize({ width, height: 1000 })
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
@@ -187,9 +187,9 @@ it.skipIf(process.platform !== 'darwin')('keeps system requests pending until fr
   })
   try {
     const toggle = page.locator('[data-plugin-panel]').getByRole('switch', { name: 'Enable Computer use', exact: true })
-    for (const width of [1680, 390]) {
+    for (const width of [1680, 570]) {
       await page.setViewportSize({ width, height: 1000 })
-      if (width === 390) await page.locator('[data-sidebar-collapsed]').waitFor({ state: 'attached' })
+      if (width === 570) await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
       await page.locator('[data-animating]').waitFor({ state: 'hidden' })
       await trace.evaluate((value) => { value.layouts.length = 0; value.documents.length = 0 })
       for (let cycle = 0; cycle < 3; cycle++) {
@@ -219,7 +219,9 @@ it.skipIf(process.platform !== 'darwin')('keeps system requests pending until fr
   await diagnostic.waitFor()
   const diagnosticText = await diagnostic.innerText()
   const height = await panel.evaluate(element => element.getBoundingClientRect().height)
-  const rowToggle = plugins.getByRole('switch', { name: 'Enable component @deepseek-ai/dsh-experimental-cua-macos', exact: true })
+  const rowToggle = plugins.locator('[data-plugin-row]').filter({
+    has: page.getByText('@deepseek-ai/dsh-experimental-cua-macos', { exact: true }),
+  }).getByRole('switch')
   const release = Promise.withResolvers<undefined>()
   const changeRow = scaffold.ctx.pluginManager.setPluginEnabled.bind(scaffold.ctx.pluginManager)
   let changing: ReturnType<typeof changeRow> | undefined

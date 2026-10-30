@@ -99,18 +99,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'a signal aborted by the next navigation or layout disposal; check it before committing UI state.',
       },
       {
-        signature: 'toggleSidebar(): void',
-        description: 'Toggle the sidebar panel (closed ⟷ contract default width).',
-        parameters: [],
-      },
-      {
         signature: 'openRightbar(track: boolean, fullscreen: boolean): void',
         description: 'Report the right panel\'s presentation without changing its expanded state.',
-        parameters: [{ name: 'track', description: 'whether the normal panel width reserves a grid track, including beneath a fullscreen overlay.' }, { name: 'fullscreen', description: 'whether the panel covers the frame and hides its outer resize handle; independent of the underlying grid track.' }],
+        parameters: [{ name: 'track', description: 'whether the normal panel width reserves a grid track, including beneath a fullscreen overlay.' }, { name: 'fullscreen', description: 'whether the panel covers the frame; independent of the underlying normal grid track.' }],
       },
       {
         signature: 'closeRightbar(): void',
-        description: 'Report the right panel as hidden: no track, no handle.',
+        description: 'Report the right panel as hidden, releasing its track.',
         parameters: [],
       },
     ],

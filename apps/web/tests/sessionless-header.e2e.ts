@@ -42,25 +42,13 @@ describe('navigation without a selected Session', () => {
       expect(await sessionHeader.count()).toBe(0)
       const header = page.locator('[data-slot="conversation.header"] > header')
       expect(await header.evaluate(element => element.getBoundingClientRect().height)).toBe(platform === 'darwin' ? 40 : 0)
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-      const reopen = platform === 'darwin'
-        ? page.locator('[data-shell-leading]').getByRole('button', { name: 'Open sidebar', exact: true })
-        : page.getByRole('button', { name: 'Open sidebar', exact: true })
-      await reopen.waitFor({ state: 'visible' })
-      expect(await sessionHeader.count()).toBe(0)
-      expect(await header.evaluate(element => element.getBoundingClientRect().height)).toBe(platform === 'darwin' ? 40 : 0)
-      if (platform === 'darwin') {
-        expect(await page.locator('[data-shell-leading]').getByRole('button', { name: 'New session', exact: true }).isVisible()).toBe(true)
+      expect(await page.getByRole('button', { name: /^(Open|Collapse) sidebar$/ }).count()).toBe(0)
+      for (const width of [1440, 1180, 390, 1440]) {
+        await page.setViewportSize({ width, height: 900 })
+        await expect.poll(() => page.locator('[data-slot="sidebar"]').evaluate(element => element.closest('[class*="sidebarCol"]')!.getBoundingClientRect().width)).toBe(236)
+        expect(await sessionHeader.count()).toBe(0)
+        expect(await header.evaluate(element => element.getBoundingClientRect().height)).toBe(platform === 'darwin' ? 40 : 0)
       }
-      // The open label precedes both the column slide and the rail's mount animation.
-      // Reverse the pointer action only after the rendered sidebar has settled.
-      const sidebarSettled = () => page.locator('[data-sidebar-collapsed]').evaluate((frame: HTMLElement) =>
-        Number.parseFloat(getComputedStyle(frame).gridTemplateColumns) === Number.parseFloat(frame.style.gridTemplateColumns)
-        && frame.getAnimations({ subtree: true }).every(animation => animation.playState === 'finished' || animation.playState === 'idle'))
-      await expect.poll(sidebarSettled, { timeout: 30_000 }).toBe(true)
-      await reopen.click()
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).waitFor({ state: 'visible' })
-      expect(await sessionHeader.count()).toBe(0)
       expect(tripwire.pageErrors).toEqual([])
       expect(tripwire.warnings).toEqual([])
     } catch (error) {

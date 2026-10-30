@@ -5,6 +5,20 @@ import { describe, expect, it } from 'vitest'
 import { loadDesktopPackageEnvironment, localMacOSPackageEnvironment, validateDesktopPackageEnvironment } from '../scripts/desktop-package-environment.mjs'
 import { resolveWindowsPackageSettings } from '../scripts/windows-package-settings.mjs'
 
+describe('intranet packaging', () => {
+  const environment = {
+    DSH_DESKTOP_APP_ID: 'com.deepseek.dsh',
+    DSH_DESKTOP_INTRANET_UPDATE_URL: 'http://172.28.236.3:18765/updates/win-x64/',
+  }
+  it('accepts unsigned Windows packaging without a mandatory-update service', () => {
+    expect(() => { validateDesktopPackageEnvironment(environment, { platform: 'win32', arch: 'x64' }, { unsigned: true }) }).not.toThrow()
+  })
+  it('rejects signed and macOS intranet packaging', () => {
+    expect(() => { validateDesktopPackageEnvironment(environment, { platform: 'win32', arch: 'x64' }) }).toThrow(/unsigned Windows/u)
+    expect(() => { validateDesktopPackageEnvironment(environment, { platform: 'darwin', arch: 'arm64' }, { unsigned: true }) }).toThrow(/unsigned Windows/u)
+  })
+})
+
 const WINDOWS = { platform: 'win32', arch: 'x64' } as const
 const MACOS = { platform: 'darwin', arch: 'arm64' } as const
 const POLICY = { DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',

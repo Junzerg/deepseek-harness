@@ -66,6 +66,8 @@
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
+      config:
+        encryptionRecipient: !!js "ctx.get('profileContext')?.name === 'desktop' ? 'age1lz9vy89q0e422lxfhukaul7pq4l2nulhgddgedx88ty2s9vfpccqu50eg4' : ''"
 
     # Session-header "Open In..." split button over the host application
     # resolution (macOS/Windows/Linux; a host with no resolved application
@@ -135,6 +137,8 @@
     # reports an actionable error when its settings-domain provider is absent.
     - id: ui-settings-account
       name: '@deepseek-ai/dsh-client-ui-settings-account'
+      config:
+        feedbackDestination: internal-team
 
     - id: account-controller
       name: '@deepseek-ai/dsh-api-account-controller'
@@ -173,7 +177,7 @@
       inject: [webStartup]
       config:
         host: !!js ctx.webStartup.host ?? '127.0.0.1'
-        port: !!js ctx.webStartup.port ?? 3080
+        port: !!js "ctx.get('profileContext')?.name === 'desktop' ? 18743 : ctx.webStartup.port ?? 3080"
         tls: !!js ctx.webStartup.tls
         compression: gzip
         compressionLevel: 1
@@ -424,10 +428,13 @@
     - id: ui-agent-preset
       name: '@deepseek-ai/dsh-client-ui-agent-preset'
 
-    # Region-local More menus: pin or unpin plugin launchers and start a
-    # plugin draft.
+    # Keep external plugin discovery and plugin authoring out of the internal
+    # distribution while retaining folded Conversation View navigation.
     - id: entry-customization
       name: '@deepseek-ai/dsh-client-ui-entry-customization'
+      config:
+        showBrowsePlugins: false
+        showCreatePlugin: false
 
     - id: ui-settings-session-log
       name: '@deepseek-ai/dsh-client-ui-settings-session-log'

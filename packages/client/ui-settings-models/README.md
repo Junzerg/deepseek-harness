@@ -154,3 +154,5 @@ These limits define the editor's field coverage and the page's reach; they are c
 None.
 
 </details>
+
+`completeApiKeySignIn` completes company model discovery and default selection before accepting a manually supplied gateway key; the account provider owns activation and reports failures.

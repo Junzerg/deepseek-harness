@@ -55,7 +55,7 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
         response.end(JSON.stringify({ code: 0, data: { biz_code: 0, biz_data: bonusOffered ? [{
           order_id: '88888888-8888-4888-8888-888888888888', campaign: 'dsh_login_bonus',
           amount: '5.00', currency: 'CNY', granted_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 86_400_000).toISOString(), msg: '已赠送您 5.00 元 DSH 体验赠金。',
+          expires_at: new Date(Date.now() + 86_400_000).toISOString(), msg: '已赠送您 5.00 元测试赠金。',
         }] : [] } }))
         return
       }
@@ -124,7 +124,6 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
 
   async function snapshot(name: string): Promise<void> {
     await expect.poll(() => page.locator('[data-desktop-onboarding]').getAttribute('aria-busy')).toBe('false')
-    const hasIllustration = name.startsWith('welcome') || name.startsWith('credit')
     // Illustrations and card icons are package assets fetched after the step renders.
     const images = await page.locator('[data-desktop-onboarding] img').evaluateAll(async elements =>
       Promise.all(elements.map(async (element) => {
@@ -136,7 +135,7 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
         }
       })))
     expect(images.filter(image => !image.loaded || !ACCOUNT_ASSET.test(image.source)), `${name}: images outside loaded package assets`).toEqual([])
-    expect(images.filter(image => image.illustration), `${name}: illustration images`).toHaveLength(hasIllustration ? 2 : 0)
+    expect(images.filter(image => image.illustration), `${name}: illustration images`).toHaveLength(0)
     const aria = await captureStableAria(page, '[data-desktop-onboarding]', scaffold.workspaceCwd)
     await mkdir(EXPECTED, { recursive: true })
     await compareOrRefreshGolden(join(EXPECTED, `${name}.expected.md`), aria, MODE)
@@ -208,29 +207,12 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
         expect(action?.width).toBeCloseTo(240, 0)
         expect(action!.y - (card!.y + card!.height)).toBeCloseTo(40, 0)
       }
-      if (hasIllustration) {
-        const illustrations = await page.locator('[class*="illustration"] > img:visible').evaluateAll(elements => elements.map((element) => {
-          const image = element as HTMLImageElement
-          const box = image.getBoundingClientRect()
-          return {
-            width: box.width, ratio: box.width / box.height, exportedRatio: image.naturalWidth / image.naturalHeight,
-            loaded: image.complete && image.naturalWidth > 0,
-          }
-        }))
-        expect(illustrations).toHaveLength(1)
-        for (const illustration of illustrations) {
-          expect(illustration.loaded).toBe(true)
-          expect(illustration.width).toBeGreaterThan(0)
-          expect(illustration.ratio).toBeCloseTo(illustration.exportedRatio, 2)
-        }
-
-      }
       if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, `${name}-${viewport.width}x${viewport.height}.png`) })
     }
     await page.setViewportSize({ width: 1280, height: 840 })
   }
 
-  it('keeps Web unchanged, resumes App progress, and returns to credit even when balance refresh fails', async () => {
+  it('keeps Web unchanged and resumes Desktop progress without exposing credit', async () => {
     const web = await browser.newPage({ viewport: { width: 1280, height: 840 }, locale: ZH_BROWSER_LOCALE })
     try {
       await web.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
@@ -254,42 +236,16 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
     }
     await page.evaluate(() => { delete document.documentElement.dataset.platform })
     await page.getByRole('button', { name: '开始设置', exact: true }).click()
-    await page.getByRole('heading', { name: '准备可用额度', exact: true }).waitFor()
-    expect(await page.getByRole('button', { name: '下一步', exact: true })
-      .evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(255, 255, 255)')
-    await snapshot('credit')
-    const laterButton = page.getByRole('button', { name: '下一步', exact: true })
-    await laterButton.hover()
-    const laterHover = await laterButton.evaluate(element => ({
-      fill: getComputedStyle(element).backgroundColor, overlay: getComputedStyle(element).backgroundImage,
-    }))
-    expect(laterHover.fill).toBe('rgb(255, 255, 255)')
-    expect(laterHover.overlay).toContain('rgba(38, 49, 72, 0.06)')
-    if (screenshots !== undefined) await page.screenshot({ path: join(screenshots, 'credit-later-hover.png') })
-    const warningsBefore = tripwire.warnings.length
-    const [balanceResponse] = await Promise.all([
-      page.waitForResponse('**/api/account/getBalance'),
-      page.reload({ waitUntil: 'load' }),
-    ])
-    await balanceResponse.finished()
-    acknowledgeReloadConnectionLoss(tripwire, warningsBefore)
-    await page.getByRole('heading', { name: '准备可用额度', exact: true }).waitFor()
-    expect(await page.getByRole('button', { name: '开始设置', exact: true }).count()).toBe(0)
-    await page.getByRole('button', { name: '下一步', exact: true }).click()
-    await page.getByRole('heading', { name: '暂时跳过充值？', exact: true }).waitFor()
-    expect(await page.locator('[data-desktop-onboarding]').evaluate(element => getComputedStyle(element).filter)).toBe('none')
-    expect(await page.getByRole('dialog').evaluate(element => getComputedStyle(element.previousElementSibling!).backdropFilter)).toBe('none')
-    await page.getByRole('button', { name: '前往充值', exact: true }).click()
-    await page.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).waitFor()
-    expect((scaffold.ctx.settings.describe().find(row => row.ns === NS)?.value as { step: string }).step).toBe('credit')
-    balanceFailure = true
-    const readsBefore = balanceReads
-    await page.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).click()
-    await page.getByRole('heading', { name: '准备可用额度', exact: true }).waitFor()
-    await expect.poll(() => balanceReads).toBeGreaterThan(readsBefore)
-    await expect.poll(() => page.getByRole('button', { name: '下一步', exact: true }).isEnabled()).toBe(true)
-    await page.getByRole('button', { name: '下一步', exact: true }).click()
     await page.getByRole('checkbox', { name: '办公与创作', exact: true }).waitFor()
+    expect(await page.getByRole('heading', { name: '准备可用额度', exact: true }).count()).toBe(0)
+    // Old saved credit progress must render the next useful page after an upgrade.
+    await scaffold.ctx.settings.mutate(NS, [{ op: 'set', path: ['step'], value: 'credit' }])
+    const warningsBefore = tripwire.warnings.length
+    await page.reload({ waitUntil: 'load' })
+    acknowledgeReloadConnectionLoss(tripwire, warningsBefore)
+    await page.getByRole('checkbox', { name: '办公与创作', exact: true }).waitFor()
+    expect(await page.getByRole('button', { name: '开始设置', exact: true }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: '去充值', exact: true }).count()).toBe(0)
     await snapshot('purpose')
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     const development = page.getByRole('checkbox', { name: '代码与开发', exact: true })
@@ -401,7 +357,7 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
     await page.close()
   })
 
-  it('keeps funded credit actions stable and rechecks on reload in English dark mode', async () => {
+  it('keeps English dark onboarding free of credit even when balance refresh fails', async () => {
     bonusBalance = '12.50'
     await scaffold.ctx.settings.mutate('ui-theme', [{ op: 'set', path: ['preference'], value: 'dark' }])
     page = await desktopPage('en-US')
@@ -410,28 +366,22 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
     await (await response).finished()
     await snapshot('welcome-en-dark')
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
-    await snapshot('credit-funded-en-dark')
-    await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await page.getByRole('checkbox', { name: 'Office & creative work', exact: true }).waitFor()
     await snapshot('purpose-en-dark')
     await page.getByRole('button', { name: 'Back', exact: true }).click()
-    await page.getByRole('button', { name: 'Continue', exact: true }).waitFor()
-    await page.getByRole('button', { name: 'Back', exact: true }).click()
     await page.getByRole('button', { name: 'Get started', exact: true }).waitFor()
     expect(scaffold.ctx.settings.describe().find(row => row.ns === NS)?.value).not.toHaveProperty('creditFunded')
-    bonusBalance = '0'
+    balanceFailure = true
+    const readsBefore = balanceReads
     const recheck = page.waitForResponse('**/api/account/getBalance')
     await page.reload({ waitUntil: 'load' })
     await (await recheck).finished()
+    expect(balanceReads).toBeGreaterThan(readsBefore)
     await page.getByRole('button', { name: 'Get started', exact: true }).click()
-    await page.getByRole('heading', { name: 'Add credits', exact: true }).waitFor()
-    expect(await page.getByRole('button', { name: 'Next', exact: true })
-      .evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(72, 73, 76)')
-    await snapshot('credit-en-dark')
+    await page.getByRole('checkbox', { name: 'Coding & development', exact: true }).waitFor()
+    expect(await page.getByRole('heading', { name: 'Add credits', exact: true }).count()).toBe(0)
     expect(await page.locator('[class*="backIcon"]').evaluate(element => getComputedStyle(element).maskImage))
       .toMatch(/^url\("[^"]*\/plugins\/@deepseek-ai\/dsh-client-ui-settings-account\/assets\/onboarding-back-[0-9a-f]{12}\.svg"\)$/)
-    await page.getByRole('button', { name: 'Next', exact: true }).click()
-    await page.getByRole('button', { name: 'Got it', exact: true }).click()
     await page.getByRole('checkbox', { name: 'Coding & development', exact: true }).locator('..').click()
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     await page.getByRole('radiogroup').waitFor()
@@ -450,8 +400,8 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
       await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
       if (!reopen) await page.getByRole('button', { name: '开始设置', exact: true }).click()
       await expect.poll(() => bonusReads).toBeGreaterThan(readsBefore)
-      await page.getByRole('heading', { name: '准备可用额度', exact: true }).waitFor()
-      expect(await page.getByText('已赠送您 5.00 元 DSH 体验赠金。', { exact: true }).count()).toBe(0)
+      await page.getByRole('checkbox', { name: '办公与创作', exact: true }).waitFor()
+      expect(await page.getByText('已赠送您 5.00 元测试赠金。', { exact: true }).count()).toBe(0)
       expect(bonusAcks).toBe(0)
       observations.push(`${reopen ? 'reopened' : 'initial'}.onboarding notice=false acks=${bonusAcks}`)
       if (!reopen) {
@@ -460,11 +410,10 @@ describe.skipIf(MODE === 'record')('web e2e: App-only desktop onboarding', () =>
         observations.push(`closed.onboarding acks=${bonusAcks}`)
       }
     }
-    await page.getByRole('button', { name: '下一步', exact: true }).click()
     await page.getByRole('button', { name: '跳过', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: '进入应用', exact: true }).click()
     await page.locator('[data-desktop-onboarding]').waitFor({ state: 'detached' })
-    const notice = page.getByText('已赠送您 5.00 元 DSH 体验赠金。', { exact: true })
+    const notice = page.getByText('已赠送您 5.00 元测试赠金。', { exact: true })
     await notice.waitFor({ state: 'visible' })
     await expect.poll(() => bonusAcks).toBe(1)
     observations.push(`workspace.notice=${await notice.innerText()} acks=${bonusAcks}`)

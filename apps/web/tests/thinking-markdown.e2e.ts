@@ -121,12 +121,7 @@ describe('web e2e: secondary Thinking Markdown', () => {
     await page.locator('[role="treeitem"]').first().click()
     await page.locator('[role="treeitem"]').nth(1).click()
     await page.getByText(DONE, { exact: true }).waitFor({ timeout: 15_000 })
-    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-    await page.waitForFunction(() => {
-      const frame = document.querySelector('[data-sidebar-collapsed]')
-      return frame !== null && getComputedStyle(frame).gridTemplateColumns.split(' ')[0] === '56px'
-        && frame.getAnimations().every(animation => animation.playState === 'finished' || animation.playState === 'idle')
-    }, undefined, { timeout: 10_000 })
+    await page.waitForFunction(() => document.querySelector('[class*="sidebarCol"]')?.getBoundingClientRect().width === 236)
     await expandTurnProcesses(page)
   })
 

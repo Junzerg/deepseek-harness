@@ -20,7 +20,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Browser, ConsoleMessage, Locator, Page } from 'playwright'
+import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import { createMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -99,7 +99,7 @@ async function holdPanelSlide(panel: Locator) {
       const target = event.target
       if (!(target instanceof Element) || !target.matches('[data-dockkit-host="dock"]')
         || (event as TransitionEvent).propertyName !== 'transform') return
-      const frame = node.closest('[style*="grid-template-columns"]')
+      const frame = node.closest('[style*="--dsh-sidebar-track-width"]')
       if (frame === null) throw new Error('panel frame is unavailable')
       state.columnsAtStart = getComputedStyle(frame).gridTemplateColumns
       const slide = target.getAnimations().find(animation =>
@@ -170,26 +170,13 @@ async function floatByDrag(page: Page, tab: Locator): Promise<void> {
   await dragTo(page, tab, { x: box.x - 240, y: box.y + box.height / 2 })
 }
 
-/**
- * Drag the frame's rightbar handle until the panel is `target` px wide (the
- * frame clamps to its own range). The handle sits on the panel's left edge, so
- * widening is a drag to the left.
- */
-async function setPanelWidth(page: Page, target: number): Promise<void> {
-  const panel = page.locator('[data-sidebar-right-panel]')
-  const handle = page.locator('[data-side="rightbar"]').first()
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const box = await panel.boundingBox()
-    if (box === null) throw new Error('panel is not rendered')
-    const delta = target - box.width
-    if (Math.abs(delta) < 2) return
-    const grip = await centre(handle)
-    await page.mouse.move(grip.x, grip.y)
-    await page.mouse.down()
-    await page.mouse.move(grip.x - delta, grip.y, { steps: 8 })
-    await page.mouse.up()
-    await page.waitForTimeout(300)
+/** Give multi-pane and tab-drag scenarios room through the existing fullscreen control. */
+async function enterFullscreen(page: Page, column: Locator): Promise<void> {
+  const panel = column.locator('[data-sidebar-right-panel]')
+  if (await panel.getAttribute('data-sidebar-right-panel') !== 'fullscreen') {
+    await column.locator('[data-sidebar-right-mode="fullscreen"]').click()
   }
+  await expect.poll(() => width(panel)).toBe(page.viewportSize()!.width)
 }
 
 /** Tab titles inside one container, in strip order. */
@@ -588,7 +575,7 @@ describe('web e2e: shipped right Sidebar', () => {
         await held.evaluate((state) => { (state.animation as Animation).finish() })
         await expect.poll(() => frame.getAttribute('data-rightbar-fullscreen')).toBe('true')
         expect(await panel.boundingBox()).toEqual({ x: 0, y: 0, ...viewport })
-        expect(await geometry()).toEqual({ columns: normalColumns, transition: 'none', handles: ['none'], animatingGrid: false })
+        expect(await geometry()).toEqual({ columns: normalColumns, transition: 'none', handles: [], animatingGrid: false })
 
         const exit = await holdPanelSlide(panel)
         try {
@@ -599,7 +586,7 @@ describe('web e2e: shipped right Sidebar', () => {
           if (leaving === null) throw new Error('leaving panel is not rendered')
           expect(leaving.x).toBeGreaterThan(0)
           expect(leaving.x).toBeLessThan(viewport.width)
-          expect(await geometry()).toEqual({ columns: closedColumns, transition: 'none', handles: ['none'], animatingGrid: false })
+          expect(await geometry()).toEqual({ columns: closedColumns, transition: 'none', handles: [], animatingGrid: false })
           await exit.evaluate((state) => { (state.animation as Animation).finish() })
           expect((await geometry()).columns).toBe(closedColumns)
         } finally {
@@ -644,113 +631,34 @@ describe('web e2e: shipped right Sidebar', () => {
       expect(tripwire.warnings).toEqual([])
     })
 
-    it('keeps a capacity-closed panel closed after widening and uses fullscreen on a narrow viewport', async () => {
-      const viewport = page.viewportSize()
-      if (viewport === null) throw new Error('expected a fixed viewport')
+    it('uses fixed widths and switches to an overlay at 1180px without closing content', async () => {
+      const viewport = page.viewportSize()!
+      const column = await resetSidebar(page)
       const frame = page.locator('[class*="frame"]').first()
-      const column = page.locator('[data-rightbar-col]')
-      const sidebar = page.locator('[class*="sidebarCol"]').first()
       const panel = column.locator('[data-sidebar-right-panel]')
+      const sidebar = page.locator('[class*="sidebarCol"]').first()
       try {
-        await page.setViewportSize({ width: 1024, height: viewport.height })
-        const leftGrip = frame.locator('[data-side="sidebar"]')
-        const grip = await centre(leftGrip)
-        await dragElement(page, leftGrip, { x: 420, y: grip.y })
-        await expect.poll(async () => await width(sidebar)).toBe(420)
-        await expect.poll(async () => await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-        await page.setViewportSize(viewport)
-        await expect.poll(async () => await width(sidebar)).toBe(420)
-        expect(await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-        await expandOf(page).click()
-        await expect.poll(async () => await column.locator('[data-sidebar-right-open]').count()).toBe(1)
-
-        await page.setViewportSize({ width: 767, height: viewport.height })
-        await expect.poll(async () => await panel.getAttribute('data-sidebar-right-panel')).toBe('fullscreen')
-        await expect.poll(async () => await width(panel)).toBe(767)
-        await expect.poll(() => frame.getAttribute('data-rightbar-fullscreen')).toBe('true')
-        expect(await frame.locator('[data-side="rightbar"]').count()).toBe(0)
-        await column.locator('[data-sidebar-right-mode="push"]').click()
-        await expect.poll(async () => await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-        await page.setViewportSize(viewport)
-        await expect.poll(async () => await width(sidebar)).toBe(420)
-        expect(await column.locator('[data-sidebar-right-open]').count()).toBe(0)
+        for (const width of [viewport.width, 1181, 1180, 767, 390, viewport.width]) {
+          await page.setViewportSize({ width, height: viewport.height })
+          const track = width > 1180 ? 336 : 0
+          await expect.poll(() => frame.evaluate(node => getComputedStyle(node).gridTemplateColumns))
+            .toBe(`236px ${width - 236 - track}px ${track}px`)
+          await expect.poll(() => panel.boundingBox()).toEqual({ x: width - 336, y: 0, width: 336, height: viewport.height })
+          expect(await panel.getAttribute('data-sidebar-right-panel')).toBe('push')
+          expect(await panel.getAttribute('data-sidebar-right-open')).not.toBeNull()
+          expect(await sidebar.evaluate(node => node.getBoundingClientRect().width)).toBe(236)
+          expect(await frame.locator('[data-side="sidebar"], [data-side="rightbar"]').count()).toBe(0)
+          expect(await frame.evaluate(node => getComputedStyle(node).transitionDuration)).toBe('0.18s')
+          expect(await column.locator('[data-dockkit-split-button]').isDisabled()).toBe(true)
+          expect(await column.locator('[data-dockkit-split-button]').locator('..').getAttribute('aria-label'))
+            .toBe('Not enough room to split. Use fullscreen or a wider window.')
+        }
       } finally {
         await page.setViewportSize(viewport)
-        const grip = await centre(frame.locator('[data-side="sidebar"]'))
-        await dragElement(page, frame.locator('[data-side="sidebar"]'), { x: 280, y: grip.y })
-        await expect.poll(async () => await width(sidebar)).toBe(280)
-        await ensureExpanded(page, column)
       }
       expect(tripwire.pageErrors).toEqual([])
       expect(tripwire.warnings).toEqual([])
     })
-
-    it('survives grip drags past both clamps on a squeezed viewport', async () => {
-      // Regression: an overshoot drag swept the panel through widths where a
-      // width-blocked split control hid itself, which changed the very strip
-      // measurement that had blocked it — a layout-effect feedback loop that
-      // crashed the pane (React error #185) and unmounted the rightbar slot
-      // entry while the column still believed it was expanded, so neither the
-      // panel nor the header's expand button remained. The crash surfaces only
-      // as a console error, which the scaffold tripwire does not watch, so this
-      // case collects console errors itself.
-      const viewport = page.viewportSize()
-      if (viewport === null) throw new Error('expected a fixed viewport')
-      const column = await resetSidebar(page)
-      const frame = page.locator('[class*="frame"]').first()
-      const panel = column.locator('[data-sidebar-right-panel]')
-      const consoleErrors: string[] = []
-      const collect = (message: ConsoleMessage): void => {
-        if (message.type() === 'error') consoleErrors.push(message.text().slice(0, 600))
-      }
-      page.on('console', collect)
-      try {
-        await page.setViewportSize({ width: 1000, height: viewport.height })
-        await ensureExpanded(page, column)
-        await width(column)
-        const grip = frame.locator('[data-side="rightbar"]')
-        // The frame reads the new viewport through a throttled ResizeObserver,
-        // a couple of frames after the resize; until then the grip sits at the
-        // old frame's coordinates. Press only a grip aligned with the panel's
-        // left edge (the handle is 8px wide, centred on the seam).
-        await expect.poll(async () => {
-          const gripBox = await grip.boundingBox()
-          const panelBox = await panel.boundingBox()
-          if (gripBox === null || panelBox === null) return Number.NaN
-          return Math.abs(gripBox.x + 4 - panelBox.x)
-        }).toBeLessThanOrEqual(1)
-        // Narrow with overshoot: drag the grip far right past the clamp floor.
-        const from = await centre(grip)
-        await page.mouse.move(from.x, from.y)
-        await page.mouse.down()
-        await page.mouse.move(980, from.y, { steps: 30 })
-        await page.mouse.up()
-        // The panel holds its floor, still open, with its grip still rendered.
-        await expect.poll(async () => await width(panel)).toBeLessThanOrEqual(302)
-        expect(await width(panel)).toBeGreaterThanOrEqual(300)
-        expect(await column.locator('[data-sidebar-right-open]').count()).toBe(1)
-        expect(await grip.count()).toBe(1)
-        // Widen with overshoot to the far left: clamped by the frame's range.
-        const back = await centre(grip)
-        await page.mouse.move(back.x, back.y)
-        await page.mouse.down()
-        await page.mouse.move(20, back.y, { steps: 30 })
-        await page.mouse.up()
-        const widened = await width(panel)
-        expect(widened).toBeGreaterThan(302)
-        expect(widened).toBeLessThan(1000)
-        expect(await column.locator('[data-sidebar-right-open]').count()).toBe(1)
-        expect(await grip.count()).toBe(1)
-        expect(consoleErrors).toEqual([])
-        expect(tripwire.pageErrors).toEqual([])
-        expect(tripwire.warnings).toEqual([])
-      } finally {
-        page.off('console', collect)
-        await page.setViewportSize(viewport)
-        await ensureExpanded(page, column)
-        await setPanelWidth(page, Math.round(viewport.width * 0.45))
-      }
-    }, 60_000)
 
     it('CONTROL: the host endpoint answers when called directly, bypassing the wire', async () => {
       const files = (scaffold.ctx as {
@@ -846,6 +754,7 @@ describe('web e2e: shipped right Sidebar', () => {
       expect(await folders.count()).toBe(await page.locator('[data-changed-files]').getByRole('button', { name: /folder/i }).count())
 
       // Split, then dock-drag: the kit's gestures drive the store's actions.
+      await enterFullscreen(page, column)
       await paneAt(column, 0).locator('[data-dockkit-split-button]').click()
       await expect.poll(async () => await panes.count()).toBe(2)
       await dragTo(
@@ -911,6 +820,7 @@ describe('web e2e: shipped right Sidebar', () => {
         expect(await wrap.getAttribute('aria-pressed')).toBe('true')
         await wrap.click()
         await expect.poll(async () => await wrap.getAttribute('aria-pressed')).toBe('false')
+        await enterFullscreen(fx, column)
         await column.locator('[data-dockkit-split-button]').first().click()
         const panes = column.locator('[data-dockkit-pane]')
         await expect.poll(async () => await panes.count()).toBe(2)
@@ -920,6 +830,7 @@ describe('web e2e: shipped right Sidebar', () => {
           titles: await tabTitles(column),
         })
         const before = await records()
+        await column.locator('[data-sidebar-right-mode="push"]').click()
 
         // The real New Session action selects a distinct blank Session; its
         // collapsed surface must not inherit the settled Session's tabs.
@@ -977,6 +888,7 @@ describe('web e2e: shipped right Sidebar', () => {
       await proseChip(page).click()
       await expect.poll(async () => await tabTitles(first)).toEqual(['Files', SAMPLE_NAME])
       const order = await tabTitles(first)
+      await enterFullscreen(page, column)
       // The insertion index is measured against chip midpoints, not strip width.
       await dragTo(page, first.locator('[data-dockkit-tab]').last(),
         await pointIn(first.locator('[data-dockkit-tab]').first(), 0.25, 0.5),
@@ -986,6 +898,7 @@ describe('web e2e: shipped right Sidebar', () => {
       // 2. Cross-pane move into a second pane: the tab leaves one pane's strip
       //    for another's.
       if (await panes.count() < 2) {
+        await enterFullscreen(page, column)
         await first.locator('[data-dockkit-split-button]').click()
         await expect.poll(async () => await panes.count()).toBe(2)
       }
@@ -998,7 +911,6 @@ describe('web e2e: shipped right Sidebar', () => {
       await expect.poll(async () => await splitButtons.count()).toBe(2)
       expect(await splitButtons.evaluateAll(buttons => buttons.every(button => (button as HTMLButtonElement).disabled))).toBe(true)
       expect(await panes.count()).toBe(2)
-      await setPanelWidth(page, 560)
       expect(await splitButtons.evaluateAll(buttons => buttons.every(button => (button as HTMLButtonElement).disabled))).toBe(true)
 
       const outer = column.locator('[data-dockkit-divider]').first()
@@ -1053,6 +965,7 @@ describe('web e2e: shipped right Sidebar', () => {
       expect(await column.locator('[data-dockkit-tab-close]').count()).toBe(1)
       await proseChip(page).click()
       await expect.poll(async () => await tabTitles(paneAt(column, 0))).toEqual(['Files', SAMPLE_NAME])
+      await enterFullscreen(page, column)
       await paneAt(column, 0).locator('[data-dockkit-split-button]').click()
       await expect.poll(async () => await panes.count()).toBe(2)
 
@@ -1087,6 +1000,7 @@ describe('web e2e: shipped right Sidebar', () => {
       // sample file, close the guide (an ordinary close with two tabs), then
       // close the file: the column collapses in the same gesture, and the
       // settle rule reseeds the current default, so reopening shows Start.
+      await column.locator('[data-sidebar-right-mode="push"]').click()
       await proseChip(page).click()
       await expect.poll(async () => await tabTitles(column)).toEqual(['Start', SAMPLE_NAME])
       await column.locator('[data-dockkit-tab]').first().hover()
@@ -1107,6 +1021,7 @@ describe('web e2e: shipped right Sidebar', () => {
       onTestFailed(() => saveFailureShot(page, 'web-e2e-sidebar-right-middle-drag'))
       const column = await resetSidebar(page)
       await proseChip(page).click()
+      await enterFullscreen(page, column)
       await expect.poll(() => tabTitles(column)).toEqual(['Files', SAMPLE_NAME])
       const sample = column.getByRole('tab').filter({ hasText: SAMPLE_NAME })
       const from = await pointIn(sample, 0.25, 0.5)

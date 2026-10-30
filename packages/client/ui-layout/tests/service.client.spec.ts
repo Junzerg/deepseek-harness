@@ -7,10 +7,7 @@ function fakePanels(): PanelActions {
   return {
     selectPanel: vi.fn(),
     retainMainPanels: vi.fn(),
-    setSidebar: vi.fn(),
-    toggleSidebar: vi.fn(),
     setViewportWidth: vi.fn(),
-    setRightbar: vi.fn(),
     openRightbar: vi.fn(),
     closeRightbar: vi.fn(),
   }
@@ -30,19 +27,8 @@ describe('LayoutController', () => {
     expect(panels.openRightbar).toHaveBeenNthCalledWith(2, true, true)
     expect(panels.openRightbar).toHaveBeenNthCalledWith(3, false, true)
     expect(panels.closeRightbar).toHaveBeenCalledTimes(1)
-    // The drag width stays the frame's own business, never the caller's.
-    expect(panels.setRightbar).not.toHaveBeenCalled()
   })
 
-  it('can toggle the sidebar immediately after construction', () => {
-    const panels = fakePanels()
-    const service = new LayoutController(panels, () => true, createSnapshotStore({ activePanelId: null }))
-
-    service.toggleSidebar()
-
-    expect(panels.toggleSidebar).toHaveBeenCalledTimes(1)
-    expect(panels.setSidebar).not.toHaveBeenCalled()
-  })
 
   it('forwards panel selection and returning to the Conversation without changing geometry', () => {
     const panels = fakePanels()
@@ -54,7 +40,6 @@ describe('LayoutController', () => {
     expect(panels.selectPanel).toHaveBeenNthCalledWith(1, panelId)
     expect(panels.selectPanel).toHaveBeenNthCalledWith(2, panelId)
     expect(panels.selectPanel).toHaveBeenNthCalledWith(3, null)
-    expect(panels.toggleSidebar).not.toHaveBeenCalled()
     expect(panels.openRightbar).not.toHaveBeenCalled()
     expect(panels.closeRightbar).not.toHaveBeenCalled()
   })
@@ -64,9 +49,9 @@ describe('LayoutController', () => {
     const second = fakePanels()
     const firstService = new LayoutController(first, () => true, createSnapshotStore({ activePanelId: null }))
     const secondService = new LayoutController(second, () => true, createSnapshotStore({ activePanelId: null }))
-    firstService.toggleSidebar()
-    expect(first.toggleSidebar).toHaveBeenCalledTimes(1)
-    expect(second.toggleSidebar).not.toHaveBeenCalled()
+    firstService.openRightbar(true, false)
+    expect(first.openRightbar).toHaveBeenCalledExactlyOnceWith(true, false)
+    expect(second.openRightbar).not.toHaveBeenCalled()
     secondService.closeRightbar()
     expect(first.closeRightbar).not.toHaveBeenCalled()
     expect(second.closeRightbar).toHaveBeenCalledTimes(1)

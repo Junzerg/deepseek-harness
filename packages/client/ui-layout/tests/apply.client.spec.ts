@@ -76,7 +76,7 @@ async function bench() {
 
 describe('ui-layout client apply', () => {
   it('declares its service dependencies', () => {
-    expect(inject).toEqual(['slots', 'theme', 'locale', 'shortcuts'])
+    expect(inject).toEqual(['slots', 'theme', 'locale'])
   })
 
   it('provides ctx.layout and declares the root-scoped frame slots', async () => {
@@ -90,7 +90,6 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('rightbar')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('shell.bottom')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('shell.overlay')).toEqual({ kind: 'list', scope: 'root' })
-    expect(slots.spec('shell.leading')).toEqual({ kind: 'single', scope: 'root' })
   })
 
   it('shares a pre-created instance between service actions, root rendering, and panelInfo', async () => {
@@ -104,8 +103,8 @@ describe('ui-layout client apply', () => {
     expect(handle.create()).toBe(instance)
     const layout = ctx.get('layout') as LayoutController
     expect(() => { layout.selectPanel('missing' as MainPanelId) }).toThrow('main panel "missing" is not registered')
-    layout.toggleSidebar()
-    expect(instance.getSnapshot().layoutInfo.sidebar).toBe(0)
+    layout.openRightbar(true, false)
+    expect(instance.getSnapshot().layoutInfo.rightbarShown).toBe(true)
     const host = rendererHost()
     expect(host.storeOf(entry, undefined)).toBe(instance)
     const panelInfo = host.root.getSnapshot().hooks.panelInfo!
@@ -118,7 +117,7 @@ describe('ui-layout client apply', () => {
     disposePanel()
     await vi.waitFor(() => { expect(panelInfo.getSnapshot()).toEqual({ activePanelId: null }) })
     expect(() => { layout.selectPanel(panelId) }).toThrow('main panel "panel-a" is not registered')
-    expect(instance.getSnapshot().layoutInfo.sidebar).toBe(0)
+    expect(instance.getSnapshot().layoutInfo.rightbarShown).toBe(true)
     const pending = layout.beginNavigation()
     await fiber.dispose()
     expect(pending.aborted).toBe(true)
@@ -163,7 +162,6 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('rightbar')).toBeUndefined()
     expect(slots.spec('shell.bottom')).toBeUndefined()
     expect(slots.spec('shell.overlay')).toBeUndefined()
-    expect(slots.spec('shell.leading')).toBeUndefined()
     expect(host.root.getSnapshot().hooks.panelInfo).toBeUndefined()
     // The built-in root declaration survives entry teardown (renderer-owned).
     expect(slots.spec('root')).toEqual({ kind: 'single', scope: 'root' })

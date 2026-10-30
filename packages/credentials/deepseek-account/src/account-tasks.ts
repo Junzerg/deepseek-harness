@@ -10,7 +10,7 @@ import type {} from './index.ts'
  * @returns whether account sign-out should interrupt this task.
  */
 export function isRunningAccountTask(agent: Pick<Agent, 'status' | 'session'>): boolean {
-  return agent.status === 'running' && agent.session.requestContext()?.provider === 'deepseek-account'
+  return agent.status === 'running' && ['deepseek-account', 'company-gateway'].includes(agent.session.requestContext()?.provider ?? '')
 }
 
 /**

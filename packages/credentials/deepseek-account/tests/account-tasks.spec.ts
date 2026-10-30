@@ -7,10 +7,12 @@ import { installAccountTaskCancellation } from '../src/account-tasks.ts'
 it('cancels running account tasks with their inboxes retained and detaches with its owner', async () => {
   const ctx = new Context()
   const cancelAccount = vi.fn()
+  const cancelCompany = vi.fn()
   const cancelOther = vi.fn()
   const cancelIdle = vi.fn()
   const tasks = [
     { status: 'running', session: { requestContext: () => ({ provider: 'deepseek-account' }) }, cancel: cancelAccount },
+    { status: 'running', session: { requestContext: () => ({ provider: 'company-gateway' }) }, cancel: cancelCompany },
     { status: 'running', session: { requestContext: () => ({ provider: 'deepseek-official' }) }, cancel: cancelOther },
     { status: 'idle', session: { requestContext: () => ({ provider: 'deepseek-account' }) }, cancel: cancelIdle },
     { status: 'running', session: { requestContext: () => undefined }, cancel: cancelOther },
@@ -24,6 +26,9 @@ it('cancels running account tasks with their inboxes retained and detaches with 
       { kind: 'hook', reason: 'deepseek-account/signed-out' }, { keepInbox: true },
     )
     expect(cancelOther).not.toHaveBeenCalled()
+    expect(cancelCompany).toHaveBeenCalledExactlyOnceWith(
+      { kind: 'hook', reason: 'deepseek-account/signed-out' }, { keepInbox: true },
+    )
     expect(cancelIdle).not.toHaveBeenCalled()
     const notice = vi.fn()
     ctx.on('deepseek-account/model-sign-in-required', notice)

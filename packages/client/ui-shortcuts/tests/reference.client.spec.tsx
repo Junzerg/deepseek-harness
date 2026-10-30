@@ -55,7 +55,7 @@ it.each(['macos', 'windows'] as const)('shows the reference, filters labels and 
     { id: 'shortcuts.open' as ShortcutCommandId, label: 'Open shortcuts', aliases: ['shortcuts'], binding: { code: 'Slash', modifiers: [platform === 'macos' ? 'meta' : 'control'] }, modified: false, conflicts: [], issue: null,
       keys: platform === 'macos' ? ['⌘', '/'] : ['Ctrl', '+', '/'], aria: platform === 'macos' ? 'Meta+/' : 'Control+/' },
     { id: 'settings.open' as ShortcutCommandId, label: 'Open settings', aliases: ['preferences'], binding: null, modified: false, conflicts: [], issue: null, keys: [], aria: undefined },
-    { id: 'sidebar.left.toggle' as ShortcutCommandId, label: 'Toggle left sidebar', aliases: ['sidebar', 'toggle left sidebar'],
+    { id: 'sidebar.right.toggle' as ShortcutCommandId, label: 'Toggle right sidebar', aliases: ['sidebar', 'toggle right sidebar'],
       binding: { code: 'KeyB', modifiers: [platform === 'macos' ? 'meta' : 'control'] }, modified: false, conflicts: [], issue: null,
       keys: platform === 'macos' ? ['⌘', 'B'] : ['Ctrl', '+', 'B'], aria: platform === 'macos' ? 'Meta+B' : 'Control+B' },
   ])
@@ -83,13 +83,13 @@ it.each(['macos', 'windows'] as const)('shows the reference, filters labels and 
   expect(screen.getAllByRole('listitem')).toHaveLength(1)
   fireEvent.change(search, { target: { value: platform === 'macos' ? 'cmd+/' : 'control+/' } })
   expect(screen.getAllByRole('listitem')).toHaveLength(1)
-  for (const query of ['sidebar', ' sDBr ', 'toggle left', platform === 'macos' ? '⌘B' : 'CtrlB', platform === 'macos' ? 'Cmd+B' : 'Control+B']) {
+  for (const query of ['sidebar', ' sDBr ', 'toggle right', platform === 'macos' ? '⌘B' : 'CtrlB', platform === 'macos' ? 'Cmd+B' : 'Control+B']) {
     fireEvent.change(search, { target: { value: query } })
-    expect(screen.getAllByRole('listitem').map(row => row.textContent)).toEqual(['Toggle left sidebar' + (platform === 'macos' ? '⌘B' : 'Ctrl+B')])
+    expect(screen.getAllByRole('listitem').map(row => row.textContent)).toEqual(['Toggle right sidebar' + (platform === 'macos' ? '⌘B' : 'Ctrl+B')])
   }
   fireEvent.change(search, { target: { value: 's' } })
   expect(screen.getAllByRole('button', { name: /^Edit shortcut for/ }).map(button => button.getAttribute('aria-label')))
-    .toEqual(['Edit shortcut for Open shortcuts', 'Edit shortcut for Toggle left sidebar', 'Edit shortcut for Open settings'])
+    .toEqual(['Edit shortcut for Open shortcuts', 'Edit shortcut for Toggle right sidebar', 'Edit shortcut for Open settings'])
   fireEvent.change(search, { target: { value: platform === 'macos' ? '⌘ Enter' : 'Ctrl + Enter' } })
   expect(screen.getAllByRole('listitem')).toHaveLength(1)
   expect(screen.getByText('Alternate delivery')).toBeTruthy()
@@ -147,7 +147,7 @@ it('saves individual edits and disables changes when configuration cannot be rea
   expect(screen.getByRole('alert').textContent).toContain('Check access permissions, then reload the page.')
   expect(screen.getByRole('alert').textContent).toContain(en['using-defaults'])
   act(() => { config.set({ ...config.getSnapshot(), error: 'future', usingDefaults: false }) })
-  expect(screen.getByRole('alert').textContent).toContain('Upgrade Harness and try again.')
+  expect(screen.getByRole('alert').textContent).toContain('Upgrade Office and try again.')
   expect(screen.getByRole('alert').textContent).toContain(en['using-accepted'])
   expect(screen.getByRole('dialog').contains(screen.getByRole('alert'))).toBe(false)
   expect(screen.getByRole('button', { name: en['reset-all'] }).hasAttribute('disabled')).toBe(true)
@@ -177,7 +177,7 @@ it('keeps core actions in product order across registration, remount and label c
   const template = catalog.getSnapshot()[0]!
   const core = [
     ['shortcuts.open', 'Keyboard shortcuts'], ['session.new', 'New session'],
-    ['sidebar.left.toggle', 'Toggle left sidebar'], ['session.search', 'Search sessions'],
+    ['session.search', 'Search sessions'],
     ['workspace.add', 'Add workspace'], ['session.rename', 'Rename session'],
     ['session.fork', 'Fork session'], ['session.archive', 'Archive session'],
     ['settings.open', 'Open settings'], ['workspace.openLocal', 'Open workspace locally'],
@@ -258,7 +258,7 @@ it.each((['web', 'desktop'] as const).flatMap(runtime => (['invalid', 'future'] 
   const text = screen.getByRole('alert').textContent
   expect(text).toContain(runtime === 'web' ? 'dsh.keybindings.v1' : 'userData/keybindings.json')
   expect(text).toContain(error === 'future'
-    ? dictionary === en ? 'Upgrade Harness' : '升级 Harness'
+    ? dictionary === en ? 'Upgrade Office' : '升级 Office'
     : dictionary === en ? 'Back up and repair' : '先备份并修复')
   expect(text).toContain(dictionary['using-accepted'])
   const reset = screen.getByRole('button', { name: dictionary['reset-all'] })

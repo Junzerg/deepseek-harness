@@ -1,4 +1,4 @@
-- group "展开／收起左侧栏":
+- group "展开／收起右侧栏":
   - button "恢复默认"
   - button "移除"
   - button "按下快捷键"

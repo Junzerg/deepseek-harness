@@ -82,39 +82,15 @@ describe('web e2e: Desktop update workspace chrome', () => {
           expect(await opens()).toBe(1)
           await page.screenshot({ path: join(evidence, 'downloading.png') })
 
-          const collapse = locale === 'zh-CN' ? '收起侧边栏' : 'Collapse sidebar'
-          const expand = locale === 'zh-CN' ? '打开侧边栏' : 'Open sidebar'
-          await page.getByRole('button', { name: collapse, exact: true }).click()
-          const toggle = page.getByRole('button', { name: expand, exact: true })
-          const badge = toggle.getByRole('img', { name: '58%', exact: true })
-          await badge.waitFor()
-          await expect.poll(() => downloading.count()).toBe(0)
-          expect(await page.getByRole('img', { name: '58%', exact: true }).count()).toBe(1)
-          const updateBackground = await badge.evaluate(element => getComputedStyle(element).backgroundColor)
-          await page.screenshot({ path: join(evidence, 'collapsed.png') })
-
+          const updateBackground = await downloading.evaluate(element => getComputedStyle(element).backgroundColor)
           const error = presentDesktopUpdate({ phase: 'error', version, failedOperation: 'download', message: 'HTTP 503' }, en)
           await publish(error)
-          const errorBadge = toggle.getByRole('img', { name: retryLabel, exact: true })
-          await errorBadge.waitFor()
-          // A failure keeps the update palette; only the label distinguishes it.
-          const failedBackground = await errorBadge.evaluate(element => getComputedStyle(element).backgroundColor)
-          expect(failedBackground).toBe(updateBackground)
-          await errorBadge.hover()
-          const tooltip = page.getByRole('tooltip', { name: errorDetail, exact: true })
-          await expect.poll(() => tooltip.evaluateAll(elements => elements.map(element => getComputedStyle(element).opacity))).toEqual(['1'])
-          await page.screenshot({ path: join(evidence, 'collapsed-error.png') })
-          await toggle.click()
           const retry = page.getByRole('button', { name: retryLabel, exact: true })
           await retry.waitFor()
-          await expect.poll(() => errorBadge.count()).toBe(0)
-          // The expanding ancestor can move the button after hover's element-only stability check.
-          await retry.evaluate(async (element) => {
-            const movements = document.getAnimations().filter(animation => animation.effect instanceof KeyframeEffect
-              && animation.effect.target instanceof Element && animation.effect.target.contains(element)
-              && animation.effect.getComputedTiming().endTime !== Infinity)
-            await Promise.all(movements.map(animation => animation.finished))
-          })
+          const failedBackground = await retry.evaluate(element => getComputedStyle(element).backgroundColor)
+          expect(failedBackground).toBe(updateBackground)
+          const tooltip = page.getByRole('tooltip', { name: errorDetail, exact: true })
+          await page.mouse.move(400, 100)
           await retry.hover()
           await expect.poll(() => tooltip.evaluateAll(elements => elements.map(element => getComputedStyle(element).opacity))).toEqual(['1'])
           await page.screenshot({ path: join(evidence, 'retry.png') })

@@ -3,8 +3,8 @@
  *
  * The frame owns the right column's geometry; this package owns one content
  * tree at the column width or spanning the viewport. A shown wide panel
- * retains its track in fullscreen, preserving the conversation width. Below
- * 768px fullscreen is derived from viewport width, without changing manual mode.
+ * retains its track in fullscreen, preserving the conversation width.
+ * Fullscreen is an explicit choice; narrow frames use the normal panel as an overlay.
  *
  * Docked content stays mounted while collapsed, translated off the frame's right
  * edge, so opening and closing are one gesture in both presentations: a slide
@@ -87,14 +87,6 @@ export interface SidebarRightInjected {
    */
   readonly measureRoom: (canSplitPane: (paneId: PaneId) => boolean) => void
   /**
-   * Record whether the frame width this seat renders at presents an expanded panel fullscreen automatically.
-   *
-   * The fullscreen command reads the latest report: while it holds, the command
-   * closes the panel instead of switching its recorded mode.
-   * @param autoFullscreen - whether the frame is narrower than the automatic fullscreen width.
-   */
-  readonly reportAutoFullscreen: (autoFullscreen: boolean) => void
-  /**
    * The navigation face's `openTab`, for the strip's add control: a new tab is
    * the guide opened by kind, through the same path as every other open.
    */
@@ -141,7 +133,6 @@ interface PanelProps {
   readonly useStore: Store['useStore']
   readonly occurrence: SidebarRightInjected['occurrence']
   readonly fullscreen: boolean
-  readonly autoFullscreen: boolean
   readonly active: boolean
   readonly retainTab: RightbarSeatProps['retainTab']
   /** Receives the kit's room-rule readings for the service's `split`. */
@@ -365,32 +356,24 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
  * measured and the automatic fullscreen rule of its frame width.
  */
 export function RightbarSeat({
-  sessionId, width, viewportWidth, canShow, useStore, actions, t, renderSlot, syncPresentation, measureRoom, reportAutoFullscreen,
+  sessionId, width, useStore, actions, t, renderSlot, syncPresentation, measureRoom,
   openTab, closeTab, useTabTypes, useTabNavigation, occurrence, retainTab, active, useShortcuts, splitPane, toggleFullscreen,
 }: RightbarSeatProps): ReactNode {
   // One store instance per session, so this map holds this session's surface.
   const shortcuts = useShortcuts(entries => entries)
   const surface = useStore(state => state.bySession[sessionId])
   const shown = active && surface !== undefined && surface.layout.expanded
-  const autoFullscreen = viewportWidth < 768
-  const fullscreen = autoFullscreen || surface?.layout.mode === 'fullscreen'
+  const fullscreen = surface?.layout.mode === 'fullscreen'
   const panelRef = useRef<HTMLDivElement | null>(null)
   // A reading never re-renders anything: the service applies it when it splits.
   const reportRoom = useCallback((fits: ReadonlyMap<PaneId, HalvesFit>): void => {
     measureRoom(paneId => fits.get(paneId)?.row !== false)
   }, [measureRoom])
-  const track = shown && !autoFullscreen
+  const track = shown
 
   useEffect(() => {
     if (active && surface === undefined) actions.open(sessionId)
   }, [actions, sessionId, surface, active])
-
-  useLayoutEffect(() => {
-    if (shown && !fullscreen && !canShow) actions.setExpanded(sessionId, false)
-  }, [actions, sessionId, shown, fullscreen, canShow])
-
-  // Read only when the fullscreen command runs, after this commit has settled.
-  useLayoutEffect(() => { reportAutoFullscreen(autoFullscreen) }, [reportAutoFullscreen, autoFullscreen])
 
   // The open/close slide needs no pulse of its own: the shell's window drag
   // watcher (ui-web) measures the marked rows every frame the surface moves and
@@ -432,7 +415,7 @@ export function RightbarSeat({
   if (surface === undefined) return null
   const panel: PanelProps = {
     sessionId, actions, t, renderSlot, surface, openTab, closeTab, useTabTypes, useTabNavigation, useStore, occurrence,
-    fullscreen, autoFullscreen, reportRoom, active, retainTab, shortcuts, splitPane, toggleFullscreen,
+    fullscreen, reportRoom, active, retainTab, shortcuts, splitPane, toggleFullscreen,
   }
   return <SidebarPanel {...panel} width={width} panelRef={panelRef} />
 }

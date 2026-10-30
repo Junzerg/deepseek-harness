@@ -90,8 +90,8 @@
     - id: agent-default-model
       name: '@deepseek-ai/dsh-agent-default-model'
       config:
-        provider: deepseek-official
-        model: deepseek-flash
+        provider: company-gateway
+        model: ''
 
     - id: jobs
       name: '@deepseek-ai/dsh-jobs-local'
@@ -120,20 +120,28 @@
     - id: deepseek-account
       name: '@deepseek-ai/dsh-deepseek-account-platform'
       config:
+        companyLogin: true
+        companyLoginEndpoint: http://172.28.236.3:18765/company-login/exchange
+        platformOrigin: https://iam-stg.haierxj.com
+        inferenceOrigin: http://ai-gateway.haierxj.cn
         desktopPlatform: !!js "ctx.get('profileContext')?.name === 'desktop' && ['darwin', 'win32'].includes(process.platform) ? process.platform : null"
 
     - id: credentials
       name: '@deepseek-ai/dsh-credentials-local'
 
-    # The pi-ai multi-provider twin, mounted dormant: zero routes (and no extra
-    # models in the picker) until a `llm-pi-ai:` settings section supplies provider
-    # profiles — then those routes register live, keys resolving per request
-    # through their apiKeyEnv references, and drop again when the section empties.
-    # Supplying those profiles is exactly what the web Models page does. Which
-    # adapters exist is composition; which providers run is the user's settings
-    # document.
+    # The company route is registered before authentication; its model catalog
+    # is populated from the gateway after a key is supplied.
     - id: llm-pi-ai
       name: '@deepseek-ai/dsh-llm-pi-ai'
+      config:
+        providers:
+          company-gateway:
+            displayName: HaierCash
+            apiKeyEnv: COMPANY_GATEWAY_API_KEY
+            accountRequired: true
+            api: openai-completions
+            baseURL: http://ai-gateway.haierxj.cn/v1
+            models: []
 
     - id: session-persistence-jsonl
       name: '@deepseek-ai/dsh-session-persistence-jsonl'
@@ -526,6 +534,8 @@
     # choice.
     - id: llm-deepseek
       name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+      disabled: true
 
     - id: llm-deepseek-account
       name: '@deepseek-ai/dsh-llm-deepseek-account'
+      disabled: true

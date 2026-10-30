@@ -1,4 +1,4 @@
-- group "Toggle left sidebar":
+- group "Toggle right sidebar":
   - button "Restore default"
   - button "Remove"
   - button "Press a shortcut"

@@ -52,11 +52,17 @@ function callOrder(fn: { mock: { invocationCallOrder: readonly number[] } }, nth
  * Page changes re-render through the channel's own subscription, standing in
  * for the renderer's framework hook.
  */
-function mount(options: { account?: 'unloaded' | 'signed-out' | 'credential-stored'; pages?: PlatformPages; copy?: typeof en | typeof zh } = {}) {
+function mount(options: {
+  platformAvailable?: boolean
+  account?: 'unloaded' | 'signed-out' | 'credential-stored'
+  pages?: PlatformPages
+  copy?: typeof en | typeof zh
+} = {}) {
   const copy = options.copy ?? en
   const pages = options.pages
   const initial = options.account ?? 'credential-stored'
   let account = snapshot(initial === 'unloaded' ? undefined : initial)
+  if (account.view && options.platformAvailable === false) account = { ...account, platformAvailable: false }
   let live = true
   let rerender = () => {}
   const dismiss = vi.fn(() => { live = false; rerender() })
@@ -218,4 +224,12 @@ it('releases the hold when a higher-priority entry unmounts this one', async () 
   // failures would publish nothing.
   expect(releaseHold).toHaveBeenCalledOnce()
   expect(spies.pages.getSnapshot()).toBeNull()
+})
+
+it('keeps company quota warnings informational even when the native bridge exists', () => {
+  const pages = pageSpies()
+  mount({ pages: pages.pages, platformAvailable: false })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByText(noticeMessage)).toBeTruthy()
+  expect(pages.open).not.toHaveBeenCalled()
 })

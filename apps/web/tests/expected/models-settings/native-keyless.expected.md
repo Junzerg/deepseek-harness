@@ -9,7 +9,11 @@
   - button "关闭"
   - heading "模型" [level=2]
   - paragraph: 填入各提供商的 API 密钥即可使用其模型。
-  - list
+  - list:
+    - listitem:
+      - text: HaierCash 自定义
+      - img "API 密钥缺失"
+      - button "编辑 HaierCash (company-gateway)": 编辑
   - tablist "添加方式":
     - tab "第三方模型提供商" [selected]
     - tab "自定义模型 API"

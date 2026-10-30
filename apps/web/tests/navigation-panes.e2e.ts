@@ -511,7 +511,7 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
     const bashRow = page.locator('[data-sample="bash"]').first()
     await expandOwningTurnProcess(page, bashRow)
     await bashRow.waitFor({ timeout: 15_000 })
-    const frame = page.locator('[style*="grid-template-columns"]').first()
+    const frame = page.locator('[style*="--dsh-sidebar-track-width"]').first()
     expect(await frame.getAttribute('data-rightbar-collapsed')).toBe('true')
     // The row click is the card's expand toggle (unified tool-row
     // interaction); it must not drive layout geometry either way.

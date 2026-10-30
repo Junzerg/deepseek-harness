@@ -92,67 +92,7 @@ async function ringCutBy(target: Locator): Promise<string[]> {
   })
 }
 
-it.each(['light', 'dark'] as const)('assembled app (%s): pointer keys stay silent; navigation and menu activation retain feedback', async (theme) => {
-  const scaffold = await launchWebScaffold()
-  onTestFinished(() => scaffold.close())
-  const browser = await chromium.launch({ headless: true })
-  onTestFinished(() => browser.close())
-  const page = await newEnglishPage(browser)
-  const consoleWatch = watchConsole(page)
-  await page.emulateMedia({ colorScheme: theme })
-  await page.goto(scaffold.authenticatedUrl)
-  await connectFreshWorkspace(page, scaffold.workspaceCwd)
-  await expect.poll(() => page.locator('body').getAttribute('data-ds-dark-theme')).toBe(theme === 'dark' ? '' : null)
-  const trigger = page.getByRole('button', { name: /^Access mode, current:/ })
-  expect((await paint(trigger)).focusColor).toBe(theme === 'dark' ? 'rgb(122, 170, 255)' : 'rgb(65, 118, 230)')
-
-  await trigger.click()
-  await page.getByRole('menu').waitFor()
-  await expectSilent(trigger)
-  await page.keyboard.press('Shift')
-  await expectSilent(trigger)
-  await page.keyboard.press('Escape')
-  await page.getByRole('menu').waitFor({ state: 'hidden' })
-  await expectSilent(trigger)
-
-  for (const key of ['Home', 'End']) {
-    await trigger.click()
-    await page.keyboard.press('Escape')
-    await expectSilent(trigger)
-    await page.keyboard.press(key)
-    await expectFocusRing(trigger, 'shadow')
-  }
-
-  await trigger.click()
-  await page.keyboard.press('Escape')
-  await page.keyboard.press('Shift+Tab')
-  expect(await trigger.evaluate(element => element === document.activeElement)).toBe(false)
-  await page.keyboard.press('Tab')
-  await expectFocusRing(trigger, 'shadow')
-  for (const key of ['Enter', 'Space']) {
-    await page.keyboard.press(key)
-    await page.getByRole('menu').waitFor()
-    await expectFocusRing(trigger, 'shadow')
-    const menu = page.getByRole('menu')
-    for (const [navigation, index] of [['End', -1], ['Home', 0]] as const) {
-      await page.keyboard.press(navigation)
-      const row = menu.getByRole('menuitem').nth(index)
-      const state = await paint(row)
-      expect(state.active).toBe(true)
-      expect(state.focusVisible).toBe(true)
-      expect(state.modality).toBe('keyboard')
-      // Menu rows intentionally use the hover fill instead of a second outline.
-      expect(state.background).toBe(state.hover)
-      expect(state.background).not.toBe('rgba(0, 0, 0, 0)')
-    }
-    await page.keyboard.press('Escape')
-    await expectFocusRing(trigger, 'shadow')
-  }
-  expect(consoleWatch.warnings).toEqual([])
-  expect(consoleWatch.pageErrors).toEqual([])
-})
-
-it.each(['light', 'dark'] as const)('assembled app (%s): the sidebar toggle keeps its whole ring in the expanded and rail layouts', async (theme) => {
+it.each(['light', 'dark'] as const)('assembled app (%s): New Session keeps its focus ring inside the fixed sidebar', async (theme) => {
   const scaffold = await launchWebScaffold()
   onTestFinished(() => scaffold.close())
   const browser = await chromium.launch({ headless: true })
@@ -161,35 +101,12 @@ it.each(['light', 'dark'] as const)('assembled app (%s): the sidebar toggle keep
   await page.emulateMedia({ colorScheme: theme })
   await page.goto(scaffold.authenticatedUrl)
   await connectFreshWorkspace(page, scaffold.workspaceCwd)
-
-  const toggle = page.getByRole('button', { name: 'Collapse sidebar' })
-  const rail = page.getByRole('button', { name: 'Open sidebar' })
-  /** Sample the ring box once the collapse animation stops moving the control. */
-  const settle = async (target: Locator, width: number): Promise<void> => {
-    await expect.poll(() => target.evaluate(element => element.getBoundingClientRect().width)).toBe(width)
-    await target.evaluate(async (element) => {
-      for (let node: Element | null = element; node !== null; node = node.parentElement) {
-        await Promise.all(node.getAnimations().map(animation => animation.finished))
-      }
-    })
-  }
-
-  await toggle.click()
-  await rail.waitFor()
-  // The rail only replaces the frozen wide layout once the collapse settles.
-  await settle(rail, 36)
-  await expectSilent(rail)
+  const button = page.getByRole('button', { name: 'New session', exact: true }).filter({ hasText: 'New Session' })
+  await button.click()
+  await expectSilent(button)
   await page.keyboard.press('Home')
-  await expectFocusRing(rail, 'outline')
-  expect(await ringCutBy(rail)).toEqual([])
-
-  await rail.click()
-  await toggle.waitFor()
-  await settle(toggle, 28)
-  await expectSilent(toggle)
-  await page.keyboard.press('Home')
-  await expectFocusRing(toggle, 'outline')
-  expect(await ringCutBy(toggle)).toEqual([])
+  await expectFocusRing(button, 'outline')
+  expect(await ringCutBy(button)).toEqual([])
 })
 
 /**

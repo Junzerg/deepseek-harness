@@ -18,10 +18,6 @@
   }
 }
 
-.sessionRow.selected {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
 .dragPreview {
   background: var(--dsw-specific-sidebar-fill);
 }
@@ -114,14 +110,25 @@
   height: 20px;
 }
 
-/* Session cell (figma): pad 8, a 16px status slot, then a 4px title gap. */
+/* Keep the status and action cells while matching the prototype's task-row typography. */
 .sessionRow {
+  box-sizing: border-box;
   height: 32px;
+  padding: 6px 10px;
+  padding-inline-start: calc(10px + var(--dsh-workspace-indent, 0px));
+  border-radius: var(--dsw-radius-sm);
   gap: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--dsw-specific-task-row-ink);
 }
 
 .sessionRow .title {
   margin: 0 6px 0 4px;
+  font: inherit;
+  color: inherit;
 }
 
 .slot {
@@ -310,7 +317,7 @@
    unguarded rule would strand that row without its ellipsis. */
 @media (hover: hover) {
   .sessionRow:hover {
-    background: var(--dsw-alias-interactive-bg-hover);
+    background: var(--dsw-specific-task-row-hover);
   }
 
   .sessionRow:hover .rowActions,
@@ -345,9 +352,26 @@
 
 /* An open row menu pins the hover affordances (figma: the row keeps its
    hover fill while its dropdown is up). */
-.projectRow.menuOpen,
-.sessionRow.menuOpen {
+.projectRow.menuOpen {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.sessionRow.menuOpen {
+  background: var(--dsw-specific-task-row-hover);
+}
+
+.sessionRow.selected,
+.sessionRow.selected:hover,
+.sessionRow.selected.menuOpen {
+  background: var(--dsw-specific-task-row-selected);
+  color: var(--dsw-specific-task-row-selected-ink);
+  font-weight: 600;
+}
+
+.sessionRow .time {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--dsw-specific-task-row-time);
 }
 
 /* Session drag insert marker: a leading chevron and 2px rule between rows,

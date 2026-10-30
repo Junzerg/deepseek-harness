@@ -2,10 +2,11 @@
   position: relative;
   flex: none;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  width: calc(100% + 4px);
-  margin: 4px -2px;
+  width: 100%;
+  margin: 0;
 }
 
 .triggerRow.railRow {

@@ -3,6 +3,7 @@ import type { AfterPackContext, BeforePackContext } from 'app-builder-lib'
 /** Electron-builder fields asserted by the Desktop release tests. */
 export interface DesktopElectronBuilderConfig {
   readonly appId: string
+  readonly electronLanguages: readonly ['en', 'zh-CN']
   readonly copyright: string
   readonly artifactName: string
   readonly protocols: readonly [{ readonly name: 'DeepSeek Harness'; readonly schemes: readonly ['dsh'] }]
@@ -40,6 +41,7 @@ export interface DesktopElectronBuilderConfig {
   }
   readonly win: {
     readonly forceCodeSigning: boolean
+    readonly verifyUpdateCodeSignature?: false
     readonly signtoolOptions: {
       readonly publisherName: string | undefined
       readonly sign: ((configuration: { path: string, hash: string, isNest: boolean }) => Promise<void>) | undefined

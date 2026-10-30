@@ -8,7 +8,11 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import { z } from 'zod'
 import { DeepSeekAccount, installAccountTaskCancellation, mergePlatformCookies, platformClientHeaders, platformWireLocale, type AccountBonusBatch, type AccountBonusOrderId, type AccountClientMetadata, type AccountDetails, type AccountUserId, type AccountView, type PlatformSession, type SignInAttemptId, type SignInAttemptView } from '@deepseek-ai/dsh-deepseek-account'
-import { credentialKey } from '@deepseek-ai/dsh-credentials'
+import { credentialKey, credentialRef } from '@deepseek-ai/dsh-credentials'
+import type {} from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-agent-default-model'
+import { COMPANY_PROVIDER, COMPANY_KEY_REF, companyAuthorizeUrl, exchangeCompanyLogin } from './company.ts'
 import type { AuthorizationSession } from '@deepseek-ai/dsh-authorization'
 import { profile, readAccountDetail, readUnnotifiedBonuses, sendBonusNotified } from './details.ts'
 import { revokeAccount, type LogoutRetryPolicy } from './logout.ts'
@@ -21,6 +25,10 @@ const device = z.object({ id: z.uuid() })
 
 /** Deployment-specific platform and request deadlines. */
 export interface Config {
+  /** Use company IAM code authorization and the shared company gateway-key completion. */
+  companyLogin?: boolean
+  /** Versions server endpoint exchanging IAM codes for personal gateway keys; required in company mode. */
+  companyLoginEndpoint?: string
   /** Platform origin serving auth-api and browser pages. */
   platformOrigin?: string
   /** Native desktop identity for Host API and embedded Platform requests; null identifies the client as web. */
@@ -50,6 +58,8 @@ export interface Config {
 }
 /** Validated deployment choices. */
 export const Config = Schema.object({
+  companyLogin: Schema.boolean().default(false),
+  companyLoginEndpoint: Schema.string().default(''),
   platformOrigin: Schema.string().default('https://platform.deepseek.com'),
   desktopPlatform: Schema.union([Schema.const('darwin'), Schema.const('win32'), Schema.const(null)]).default(null),
   embeddedPageDist: Schema.string().default(''),
@@ -85,6 +95,9 @@ export class PlatformAccount extends DeepSeekAccount {
   static inject = ['credentials', 'authorization']
   static Config = Config
   private readonly origin: string
+  private readonly companyLogin: boolean
+  private readonly companyLoginEndpoint: string
+  private keyCompletion: Promise<void> = Promise.resolve()
   private readonly embeddedPageDist: string
   private readonly inferenceOrigin: string
   private readonly rewriteBrowserOrigin: boolean
@@ -113,6 +126,14 @@ export class PlatformAccount extends DeepSeekAccount {
     super(ctx)
     installAccountTaskCancellation(ctx)
     const resolved = Config(config)
+    this.companyLogin = resolved.companyLogin
+    this.companyLoginEndpoint = resolved.companyLoginEndpoint
+    if (this.companyLogin) {
+      const endpoint = new URL(this.companyLoginEndpoint)
+      if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+        throw new Error('account: companyLoginEndpoint must be an HTTP(S) URL without credentials, query or fragment')
+      }
+    }
     this.embeddedPageDist = resolved.embeddedPageDist
     this.origin = platformOrigin(resolved.platformOrigin, resolved.allowLoopbackHttp)
     const inference = new URL(resolved.inferenceOrigin)
@@ -159,6 +180,8 @@ export class PlatformAccount extends DeepSeekAccount {
         await active.done
       }
       await this.removing
+      await this.keyCompletion
+      await this.keyCompletion
       await Promise.all(this.revocations)
       this.changed()
     }, 'account: active attempt lifetime')
@@ -166,12 +189,16 @@ export class PlatformAccount extends DeepSeekAccount {
 
   async [Service.init](): Promise<void> {
     const record = await this.ctx.credentials.readRecord(KEY)
-    if (record === undefined) return
+    if (record === undefined) {
+      if (this.companyLogin) await this.ctx.credentials.unset(credentialRef(COMPANY_KEY_REF))
+      return
+    }
     if (record.kind !== 'grant') throw new PlatformAuthError('storage')
     const parsed = grant.safeParse(record.payload)
     if (!parsed.success) throw new PlatformAuthError('storage')
     if (parsed.data.issuer === this.origin) return
     await this.ctx.credentials.deleteRecord(KEY)
+    if (this.companyLogin) await this.ctx.credentials.unset(credentialRef(COMPANY_KEY_REF))
   }
 
   override async getState(): Promise<AccountView> {
@@ -189,6 +216,12 @@ export class PlatformAccount extends DeepSeekAccount {
   }
 
   override async getProfile(client: AccountClientMetadata): Promise<AccountDetails['profile'] | null> {
+    if (this.companyLogin) {
+      const stored = await this.readCurrentGrant(this.detailsLifetime)
+      if (stored === null) return null
+      const initial = this.attempt?.initialProfile
+      return initial?.token === stored.token ? initial.value : this.lastProfile?.token === stored.token ? this.lastProfile.profile : null
+    }
     const lifetime = this.detailsLifetime
     const stored = await this.readCurrentGrant(lifetime)
     if (stored === null || lifetime.signal.aborted) return null
@@ -202,10 +235,12 @@ export class PlatformAccount extends DeepSeekAccount {
   }
 
   override getBalance(client: AccountClientMetadata): Promise<AccountDetails['balance'] | null> {
+    if (this.companyLogin) return Promise.resolve(null)
     return this.getDetail('balance', this.detailHeaders(client))
   }
 
   override async getUnnotifiedBonuses(client: AccountClientMetadata): Promise<AccountBonusBatch | null> {
+    if (this.companyLogin) return null
     const lifetime = this.detailsLifetime
     const headers = this.detailHeaders(client)
     const stored = await this.readCurrentGrant(lifetime)
@@ -226,6 +261,7 @@ export class PlatformAccount extends DeepSeekAccount {
   }
 
   override async ackBonusNotified(accountId: AccountUserId, orderId: AccountBonusOrderId, client: AccountClientMetadata): Promise<boolean> {
+    if (this.companyLogin) return false
     const lifetime = this.detailsLifetime
     const headers = this.detailHeaders(client)
     const stored = await this.readCurrentGrant(lifetime)
@@ -356,6 +392,7 @@ export class PlatformAccount extends DeepSeekAccount {
   }
 
   override async getPlatformSession(): Promise<PlatformSession | null> {
+    if (this.companyLogin) return null
     const lifetime = this.detailsLifetime
     const stored = await this.readCurrentGrant(lifetime)
     if (stored === null || lifetime.signal.aborted) return null
@@ -459,18 +496,88 @@ export class PlatformAccount extends DeepSeekAccount {
     return this.getState()
   }
 
+  override async completeApiKeySignIn(apiKey: string): Promise<void> {
+    if (this.removing !== undefined) await this.removing
+    if (this.closed || !this.companyLogin) throw new PlatformAuthError('protocol')
+    return this.queueCompanyKey(apiKey)
+  }
+
+  private queueCompanyKey(apiKey: string, commit = async (): Promise<void> => {
+    await this.ctx.credentials.modifyRecord(KEY, () => Promise.resolve({
+      kind: 'grant', payload: { version: 1, token: apiKey, issuer: this.origin },
+    }))
+  }): Promise<void> {
+    const completion = this.keyCompletion.then(async () => {
+      if (this.closed) throw new PlatformAuthError('protocol')
+      if (!/^[\x21-\x7e]+$/.test(apiKey)) throw new PlatformAuthError('protocol')
+      const llm = this.ctx.get('llm')
+      const settings = this.ctx.get('settings')
+      const defaults = this.ctx.get('agentDefaultModel')
+      if (llm === undefined || settings === undefined || defaults === undefined) throw new PlatformAuthError('protocol')
+      const namespace = settings.describe({ redactSecrets: true }).find(item => item.ns === 'llm-pi-ai')
+      const value = namespace?.value as { providers?: Record<string, { api?: string; baseURL?: string; apiKeyEnv?: string }> } | undefined
+      const provider = value?.providers?.[COMPANY_PROVIDER]
+      if (provider?.api !== 'openai-completions' || !provider.baseURL || provider.apiKeyEnv !== COMPANY_KEY_REF) throw new PlatformAuthError('protocol')
+      const models = await llm.discoverModels('llm-pi-ai', { api: provider.api, baseURL: provider.baseURL, apiKey }, AbortSignal.timeout(this.requestTimeout))
+      const first = models[0]
+      if (first === undefined) throw new PlatformAuthError('protocol')
+      const current = defaults.currentSelection()
+      const model = current.provider === COMPANY_PROVIDER ? models.find(item => item.id === current.model) ?? first : first
+      try {
+        await this.ctx.credentials.unset(credentialRef(COMPANY_KEY_REF))
+        await settings.update('llm-pi-ai', { providers: { [COMPANY_PROVIDER]: { models: models.map(item => ({
+          id: item.id, name: item.name ?? item.id,
+          ...item.contextWindow === undefined ? {} : { contextWindow: item.contextWindow },
+          ...item.maxTokens === undefined ? {} : { maxTokens: item.maxTokens },
+        })) } } })
+        await defaults.saveSelection({ provider: COMPANY_PROVIDER, model: model.id })
+        const selected = defaults.currentSelection()
+        if (selected.provider !== COMPANY_PROVIDER || selected.model !== model.id) throw new PlatformAuthError('storage')
+        await this.ctx.credentials.set(credentialRef(COMPANY_KEY_REF), apiKey)
+        await commit()
+      } catch (error) {
+        await this.clearCompanyAccess()
+        await this.ctx.credentials.deleteRecord(KEY)
+        throw error
+      }
+    })
+    this.keyCompletion = completion.catch((_completionFailed: unknown) => {
+      // Callers own the failure; later submissions remain usable.
+    })
+    return completion
+  }
+
+  /** Remove synchronized access before publishing sign-out, including keys changed after login. */
+  private async clearCompanyAccess(): Promise<void> {
+    await this.ctx.credentials.unset(credentialRef(COMPANY_KEY_REF))
+    const settings = this.ctx.get('settings')
+    const defaults = this.ctx.get('agentDefaultModel')
+    if (settings === undefined || defaults === undefined) throw new PlatformAuthError('protocol')
+    await settings.update('llm-pi-ai', { providers: { [COMPANY_PROVIDER]: { models: [] } } })
+    if (defaults.currentSelection().provider === COMPANY_PROVIDER) {
+      await defaults.saveSelection({ provider: COMPANY_PROVIDER, model: '' })
+    }
+  }
+
   override signOut(client: AccountClientMetadata): Promise<AccountView> {
     this.removing ??= (async () => {
       if (this.closed) throw new PlatformAuthError('protocol')
       if (this.attempt !== undefined) await this.cancelSignIn(this.attempt.view.id)
+      await this.keyCompletion
       const record = await this.ctx.credentials.readRecord(KEY)
       if (record !== undefined) {
         if (record.kind !== 'grant') throw new PlatformAuthError('storage')
         const parsed = grant.safeParse(record.payload)
         if (!parsed.success) throw new PlatformAuthError('storage')
         if (parsed.data.issuer !== this.origin) throw new PlatformAuthError('protocol')
+        if (!this.companyLogin) {
+          await this.ctx.credentials.deleteRecord(KEY)
+          this.revoke(parsed.data.token, platformClientHeaders(this.platform, client))
+        }
+      }
+      if (this.companyLogin) {
+        await this.clearCompanyAccess()
         await this.ctx.credentials.deleteRecord(KEY)
-        this.revoke(parsed.data.token, platformClientHeaders(this.platform, client))
       }
       this.attempt = undefined
       this.ctx.emit('deepseek-account/signed-out')
@@ -558,6 +665,23 @@ export class PlatformAccount extends DeepSeekAccount {
       }), 'account: browser callback')
       signal.throwIfAborted()
       const redirectUri = `${attempt.origin}/oauth/callback`
+      if (this.companyLogin) {
+        this.update(attempt, { phase: 'waiting-browser', authorizeUrl: companyAuthorizeUrl(this.origin, redirectUri, state), expiresAt })
+        const receivedCode = await code.promise
+        signal.throwIfAborted()
+        this.update(attempt, { phase: 'exchanging' })
+        const identity = await exchangeCompanyLogin(this.companyLoginEndpoint, redirectUri, receivedCode, signal)
+        signal.throwIfAborted()
+        this.update(attempt, { phase: 'committing' })
+        clearTimeout(timer)
+        await this.queueCompanyKey(identity.apiKey, () => session.commit({
+          kind: 'grant', payload: { version: 1, token: identity.apiKey, issuer: this.origin },
+        }))
+        attempt.initialProfile = { token: identity.apiKey, value: { status: 'ready', value: { id: null, name: identity.account, contact: identity.email } } }
+        this.cacheProfile(identity.apiKey, { status: 'ready', value: { id: null, name: identity.account, contact: identity.email } })
+        if (attempt.loginSource === 'desktop') attempt.completionUrl = 'dsh://open'
+        return
+      }
       const init = initialization.safeParse(await this.request('auth_init', {
         code_challenge: challenge, code_challenge_method: 'S256', state, redirect_uri: redirectUri, locale: attempt.locale,
         login_source: attempt.loginSource,

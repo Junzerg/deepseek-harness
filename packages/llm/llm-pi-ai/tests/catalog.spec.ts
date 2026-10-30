@@ -13,6 +13,17 @@ import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
 import { catalogModels, catalogProvider } from '../src/catalog.ts'
 import { resolveProfiles } from '../src/config.ts'
+
+it('registers an explicitly empty gateway catalog before credentials and models are available', () => {
+  const profile = resolveProfiles({ 'company-gateway': {
+    api: 'openai-completions', baseURL: 'http://gateway.test/v1', models: [],
+  } }).get('company-gateway')
+  expect(profile?.catalogError).toBeUndefined()
+  expect(profile?.piProvider).toBeDefined()
+  expect(profile?.piProvider?.getModels()).toEqual([])
+  expect(() => resolveProfiles({ 'company-gateway': { api: 'openai-completions', baseURL: 'http://gateway.test/v1' } }))
+    .toThrow('resolves no models')
+})
 import { createModels, createProvider, getSupportedThinkingLevels } from '../src/models.ts'
 import { buildProvider, supportedProtocols } from '../src/provider.ts'
 import { assemble } from './assemble.ts'

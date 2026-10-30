@@ -1057,6 +1057,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the initial snapshot without waiting for browser approval.',
       },
       {
+        signature: 'abstract completeApiKeySignIn(apiKey: string): Promise<void>',
+        description: 'Complete manual company-key entry through the same model configuration used after IAM login.',
+        parameters: [{ name: 'apiKey', description: 'user-supplied company gateway key; never returned to clients.' }],
+        returns: 'after model discovery, default selection and credential persistence succeed.',
+      },
+      {
         signature: 'abstract cancelSignIn(id: SignInAttemptId): Promise<AccountView>',
         description: 'Cancel only the named attempt; committing attempts settle before returning.',
         parameters: [{ name: 'id', description: 'attempt identity from this Host.' }],
@@ -1064,7 +1070,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'abstract signOut(client: AccountClientMetadata): Promise<AccountView>',
-        description: 'Remove the local grant while retaining API keys; the provider revokes it in the background.',
+        description: 'Remove the local grant and provider-owned synchronized credentials; independent API keys remain.',
         parameters: [{ name: 'client', description: 'identity of the requesting UI, captured for the background revocation retries.' }],
         returns: 'the signed-out state after local removal; remote failures never restore the grant.',
       },

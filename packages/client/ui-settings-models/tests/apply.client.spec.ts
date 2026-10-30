@@ -37,10 +37,12 @@ async function bench(mock = RemoteMock.create().load(remoteDefaultResponses), se
   const locale = new LocaleRuntime(ctx)
   locale.setLocale('zh')
   ctx.provide('locale', locale)
+  const completeCompanyKey = vi.fn(async () => ({ ok: true, value: undefined }))
+  const storeCredential = vi.fn()
   const remote = new TestRemote(ctx, {
     credentials: {
       describe: vi.fn(() => Promise.resolve({ ok: true, value: {} })),
-      set: vi.fn(),
+      set: storeCredential,
       unset: vi.fn(),
     },
     llm: {
@@ -50,10 +52,11 @@ async function bench(mock = RemoteMock.create().load(remoteDefaultResponses), se
       ...services,
     },
     settings: mock.remote.settings,
+    account: { completeApiKeySignIn: completeCompanyKey },
     session: { initializeDefaultModel: vi.fn(async () => ({ ok: true, value: undefined })) },
   })
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
-  return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, remote }
+  return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, remote, completeCompanyKey, storeCredential }
 }
 
 function declare(slots: SlotRegistry): () => void {
@@ -111,7 +114,7 @@ describe('ui-settings-models apply', () => {
 
   it('declares the services it uses', () => {
     expect(inject).toEqual([
-      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session',
+      'slots', 'locale', 'remote', 'remote.credentials', 'remote.llm', 'remote.settings', 'remote.session', 'remote.account',
       'configForms', 'settingsSchema',
     ])
   })
@@ -154,6 +157,9 @@ describe('ui-settings-models apply', () => {
     )()
     expect(deepSeekInjected.hooks.models).toBe(injected.controller.store)
     expect(typeof deepSeekInjected.operations.storeCredential).toBe('function')
+    expect(await deepSeekInjected.operations.storeCredential('COMPANY_GATEWAY_API_KEY', 'fixture-key')).toBeUndefined()
+    expect(before.completeCompanyKey).toHaveBeenCalledExactlyOnceWith('fixture-key')
+    expect(before.storeCredential).not.toHaveBeenCalled()
 
     const after = await bench()
     await after.ctx.plugin({ inject: [...inject], apply }).await()

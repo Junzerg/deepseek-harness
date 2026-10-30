@@ -73,7 +73,7 @@ it('reserves bottom content height without remounting it on main-panel navigatio
         expected.push(`${platform}: ${JSON.stringify(await check(360, platform === 'windows' ? 40 : 0))}`)
       }
       await page.setViewportSize({ width: 520, height: 600 })
-      await expect.poll(() => page.locator('[data-shell-bottom]').locator('..').getAttribute('data-sidebar-collapsed')).toBe('true')
+      await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
       expected.push(`narrow: ${JSON.stringify(await check(360))}`)
       scaffold.ctx.loader.remove(entryId)
       await page.locator('[data-bottom-fixture]').waitFor({ state: 'detached' })

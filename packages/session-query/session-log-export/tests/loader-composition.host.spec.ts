@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -22,17 +22,24 @@ afterEach(async () => {
 })
 
 describe('session-log-download real Loader composition', () => {
-  it('discovers and executes /export through the assembled command plane', async () => {
+  it.each(['desktop', 'web'])('discovers /export with the shipped %s encryption policy', async (profile) => {
+    const shipped = await readFile(new URL('../../../bundle/web-app/cordis.patch.yml', import.meta.url), 'utf8')
+    const recipientRow = shipped.split('\n').find(line => line.trimStart().startsWith('encryptionRecipient:'))
+    if (recipientRow === undefined) throw new Error('Desktop encryption policy is missing')
+    let observed: SessionLogDownload.Config | undefined
     root = await mkdtemp(join(tmpdir(), 'dsh-session-export-loader-'))
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
       "- name: '@deepseek-ai/dsh-session'",
       "- name: '@deepseek-ai/dsh-commands'",
       "- name: '@deepseek-ai/dsh-session-log-export'",
+      '  config:',
+      '    ' + recipientRow.trim(),
       '',
     ].join('\n'))
 
     context = new Context()
+    context.provide('profileContext', { name: profile } as never)
     context.baseUrl = pathToFileURL(root).href + '/'
     context.provide('connection', {
       fetch: { register: () => () => Promise.resolve() },
@@ -42,7 +49,10 @@ describe('session-log-download real Loader composition', () => {
     const modules = new Map<string, unknown>([
       ['@deepseek-ai/dsh-session', SessionStore],
       ['@deepseek-ai/dsh-commands', CommandRuntime],
-      ['@deepseek-ai/dsh-session-log-export', SessionLogDownload],
+      ['@deepseek-ai/dsh-session-log-export', { ...SessionLogDownload, apply: (ctx: Context, config: SessionLogDownload.Config) => {
+        observed = config
+        SessionLogDownload.apply(ctx, config)
+      } }],
     ])
     context.loader.internal = {
       version: 'v2',
@@ -57,6 +67,7 @@ describe('session-log-download real Loader composition', () => {
     })
     await context.loader.await()
 
+    expect(observed?.encryptionRecipient).toMatch(profile === 'desktop' ? /^age1/ : /^$/)
     const session = (context.get('sessions') as SessionStore)
       .create(SessionId('loader-session-export'), { meta: { createdAt: 1 } })
     const agent = { session, status: 'idle', options: {} } as unknown as Agent

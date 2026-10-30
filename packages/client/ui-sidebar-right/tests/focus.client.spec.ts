@@ -26,9 +26,8 @@ function harness() {
   const ctx = new Context()
   const tabs = new SidebarRightTabRegistry(ctx)
   for (const kind of ['guide', 'files', 'terminal']) tabs.register({ id: kind, kind, title: () => kind, multiple: kind === 'terminal' })
-  const room = { allowed: true, autoFullscreen: false }
+  const room = { allowed: true }
   const { controller, adopt, show: showSession, measure } = createSidebarRightController(tabs, vi.fn(), {
-    autoFullscreen: () => room.autoFullscreen,
     openWithFocus: (_sessionId, open) => { open() },
     closeWithFocus: (_sessionId, _paneId, close) => { close() },
   })
@@ -194,10 +193,6 @@ describe('sidebar focus targets', () => {
     expect(h.controller.splitBlock(floated)).toBe('float')
     h.controller.toggleFullscreen(floated)
     expect(h.layout().mode).toBe('push')
-    h.room.autoFullscreen = true
-    releases.push(h.show())
-    h.controller.toggleFullscreen(h.controller.commandTarget(null)!)
-    expect(h.layout().expanded).toBe(false)
   })
 
   it('rejects orphaned markup and preserves an empty pane identity until content arrives', () => {

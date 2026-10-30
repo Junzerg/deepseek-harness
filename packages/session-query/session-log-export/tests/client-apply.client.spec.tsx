@@ -128,3 +128,19 @@ describe('session-log-download browser plugin', () => {
     await b.fiber.dispose()
   })
 })
+
+it('hides the Desktop Header feedback entry while retaining the feedback service', async () => {
+  vi.stubGlobal('dshDesktop', {})
+  const b = await bench()
+  try {
+    const injected = injectedOf(b.slots.entries('conversation.session.header.utilities')[0]) as SessionLogDownloadHeaderInjected
+    const openSession = vi.fn()
+    const feedback = b.ctx.plugin((ctx) => { ctx.provide('feedbackUi', { openSession }) })
+    await feedback.await()
+    expect(injected.hooks.feedbackAvailable.getSnapshot()).toBe(false)
+    injected.openFeedback(SID)
+    expect(openSession).toHaveBeenCalledWith(SID)
+  } finally {
+    await b.ctx.fiber.dispose()
+  }
+})

@@ -85,6 +85,17 @@ Function InstallerFinish
         Quit
     ${EndIf}
     System::Call 'user32::DestroyWindow(p $InstallerProgressWindow)'
+    ${If} ${isUpdated}
+        ${IfNot} ${isForceRun}
+            Abort
+        ${EndIf}
+        Call InstallerStartApp
+        ${IfNot} ${Errors}
+            Abort
+        ${EndIf}
+        ShowWindow $HWNDPARENT 5
+        MessageBox MB_OK|MB_ICONEXCLAMATION "$(INSTALLER_LAUNCH_FAILED)"
+    ${EndIf}
     StrCpy $InstallerPhase "success"
     Call InstallerCreate
 FunctionEnd

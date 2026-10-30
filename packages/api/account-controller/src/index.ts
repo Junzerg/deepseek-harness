@@ -67,6 +67,13 @@ export class AccountController extends TypertRemoteService {
     return this.ctx.deepseekAccount.startSignIn(client, callbackOrigin, loginSource)
   }
   /**
+   * Complete manual gateway-key entry using the account provider's shared model configuration.
+   * @param apiKey - personal company gateway key.
+   * @returns after the provider completes model discovery and credential/default persistence.
+   */
+  @Remote
+  completeApiKeySignIn(apiKey: string): Promise<void> { return this.ctx.deepseekAccount.completeApiKeySignIn(apiKey) }
+  /**
    * Cancel the named local attempt.
    * @param attemptId - attempt to cancel.
    * @returns settled cancellation or commit state.
@@ -82,7 +89,7 @@ export class AccountController extends TypertRemoteService {
     return this.ctx.agents.list().some(isRunningAccountTask)
   }
   /**
-   * Remove the local account grant and revoke it through Platform in the background, without deleting API keys.
+   * Remove the local account grant and provider-owned synchronized credentials; independent API keys remain.
    * @param client - identity of the requesting UI, captured for the background revocation retries.
    * @returns state after removing the local account grant.
    */

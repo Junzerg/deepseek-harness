@@ -73,6 +73,7 @@
 }
 
 .sectionLabel {
+  margin-right: auto;
   flex: none;
   max-width: 45%;
   min-width: 0;
@@ -382,8 +383,11 @@
 }
 
 .flatList > * + *,
-.searchTree > [role='treeitem'] + [role='treeitem'],
 .groupSection > * + * {
+  margin-top: 0;
+}
+
+.searchTree > [role='treeitem'] + [role='treeitem'] {
   margin-top: 2px;
 }
 
@@ -628,4 +632,8 @@
   .headerActions {
     transition: none;
   }
+}
+
+.searchSlot[hidden] {
+  display: none;
 }

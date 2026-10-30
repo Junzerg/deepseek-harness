@@ -1,7 +1,5 @@
-# AppFrame drag handles
+# AppFrame outer columns
 
-## sidebar
-
-- hit strip present: true
-- cursor: col-resize
-- pill generated: false
+- sidebar width: 236px
+- normal right panel width: 336px
+- column resize handles: 0

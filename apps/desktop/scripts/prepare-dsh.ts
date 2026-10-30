@@ -4,7 +4,7 @@ import { resolveMacOSSignatureCacheDirectory } from './macos-signature-cache-dir
 import { packagingStep } from './packaging-step.mjs'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join, relative, resolve } from 'node:path'
 import { desktopNodeEnvironment } from '../src/node-environment.ts'
@@ -150,6 +150,19 @@ async function main(): Promise<void> {
         recursive: true, dereference: true,
         filter: source => desktopRuntimeFileExclusion(relative(modules, source), target, officeEngine) === undefined,
       })
+    })
+    // Fork-local: bundle current VC++ runtime DLLs beside the LibreOffice engine so it starts on
+    // hosts whose system MSVCP140.dll predates the engine's toolchain (crashes with 0xC0000005).
+    // Inert unless DSH_DESKTOP_PORTABLE_CRT_DIR names a directory of redist DLLs.
+    await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:portable-crt', async () => {
+      const crtDirectory = process.env.DSH_DESKTOP_PORTABLE_CRT_DIR
+      if (crtDirectory === undefined) return
+      if (target.platform !== 'win32') throw new Error('desktop runtime: portable CRT applies to Windows targets only')
+      const engineBin = join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', `libreoffice-kit-${officeEngine}`, 'bin')
+      const libraries = readdirSync(crtDirectory).filter(file => /^(?:msvcp140|vcruntime140)[^/]*\.dll$/iu.test(file))
+      if (libraries.length === 0) throw new Error(`desktop runtime: ${crtDirectory} contains no VC++ runtime DLLs`)
+      for (const file of libraries) copyFileSync(join(crtDirectory, file), join(engineBin, file))
+      console.log(`desktop runtime: bundled ${libraries.length} portable CRT DLL(s) beside the ${officeEngine} engine`)
     })
     writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'), `${JSON.stringify({
       name: '@deepseek-ai/dsh-desktop-runtime', private: true, version: release.version, type: 'module',

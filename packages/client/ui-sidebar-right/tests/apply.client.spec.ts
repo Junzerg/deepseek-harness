@@ -27,7 +27,7 @@ import { ExpandButton } from '../src/client/shell/ExpandButton.tsx'
 import { GuideBody } from '../src/client/tabs/guide/GuideBody.tsx'
 import { GuideTitle } from '../src/client/tabs/guide/GuideTitle.tsx'
 import { GUIDE_ID } from '../src/client/tabs/guide/definition.ts'
-import { en, ja, zh, es, fr, de, ru, pt } from '../src/client/locales.ts'
+import { en, zh } from '../src/client/locales.ts'
 
 const SHORTCUT_CATALOG: readonly never[] = []
 
@@ -124,7 +124,7 @@ describe('ui-sidebar-right apply', () => {
     expect(ctx.sidebarRightTabs).toBeInstanceOf(SidebarRightTabRegistry)
     expect(ctx.sidebarRight).toBeInstanceOf(SidebarRightController)
     expect('adopt' in ctx.sidebarRight).toBe(false)
-    expect(dictionaries.get('sidebarRight')).toEqual({ zh, en, ja, es, fr, de, ru, pt })
+    expect(dictionaries.get('sidebarRight')).toEqual({ zh, en })
     const guide = ctx.sidebarRightTabs.get('guide')
     expect(guide?.id).toBe(GUIDE_ID)
     expect(guide?.priority).toBe('builtin')
@@ -207,13 +207,11 @@ describe('ui-sidebar-right apply', () => {
     injected.measureRoom(() => true)
     injected.splitPane(surface.layout.activePaneId)
     expect(panes()).toHaveLength(2)
-    // The fullscreen command follows the automatic fullscreen rule the seats report.
     const layoutOf = () => instance.getSnapshot().bySession[SESSION]?.layout
     injected.toggleFullscreen()
     expect(layoutOf()?.mode).toBe('fullscreen')
-    injected.reportAutoFullscreen(true)
     injected.toggleFullscreen()
-    expect(layoutOf()?.expanded).toBe(false)
+    expect(layoutOf()?.expanded).toBe(true)
     expect(layoutOf()?.mode).toBe('push')
     // A global panel takes the Conversation's place: no Session is on screen.
     layout.panelInfo.set({ activePanelId: 'plugins' })

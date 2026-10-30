@@ -606,74 +606,36 @@ describe('RightbarSeat presentation', () => {
     expect(h.frame.closeRightbar).toHaveBeenCalled()
   })
 
-  it('derives narrow fullscreen without recording mode and returns to normal when widened', async () => {
+  it('keeps an open panel and its content mounted through narrow and wide frames', async () => {
     const h = await mountSeat(767, false)
-    h.open()
-    expect(h.layout().mode).toBe('push')
-    expect(h.frame.openRightbar).toHaveBeenLastCalledWith(false, true)
+    const tab = h.open()
     const stored = h.instance.getSnapshot()
     const body = element(h.view.container, '[data-tab-body]')
-    h.view.update({ width: 420, viewportWidth: 768, canShow: true })
-    expect(h.instance.getSnapshot()).toBe(stored)
-    expect(element(h.view.container, '[data-tab-body]')).toBe(body)
-    expect(h.frame.openRightbar).toHaveBeenLastCalledWith(true, false)
+    for (const viewportWidth of [390, 1180, 1181, 1440]) {
+      h.view.update({ width: 336, viewportWidth, canShow: true })
+      expect(h.instance.getSnapshot()).toBe(stored)
+      expect(element(h.view.container, '[data-tab-body]')).toBe(body)
+      expect(h.frame.openRightbar).toHaveBeenLastCalledWith(true, false)
+      expect(h.bodies.get(tab.id)?.tab.signal.aborted).toBe(false)
+    }
   })
 
-  it('closes on automatic fullscreen exit and stays closed after widening', async () => {
-    const h = await mountSeat(500, false)
-    const tab = h.open()
-    const signal = h.bodies.get(tab.id)!.tab.signal
-    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
-    expect(h.layout().expanded).toBe(false)
-    expect(h.layout().mode).toBe('push')
-    const stored = h.instance.getSnapshot()
-    h.view.update({ width: 420, viewportWidth: 1440, canShow: true })
-    expect(h.instance.getSnapshot()).toBe(stored)
-    expect(h.layout().tabs[tab.id]).toBeDefined()
-    expect(signal.aborted).toBe(false)
-    expect(h.layout().expanded).toBe(false)
-  })
-
-  it('applies the automatic fullscreen rule of the width it renders at to the fullscreen command', async () => {
-    const h = await mountSeat()
+  it('changes fullscreen only through an explicit command at every frame width', async () => {
+    const h = await mountSeat(390)
     h.open()
-    // Narrowed below the automatic fullscreen width, the command closes the panel.
-    h.view.update({ width: 420, viewportWidth: 700, canShow: false })
-    fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
-    expect(h.layout().expanded).toBe(false)
     expect(h.layout().mode).toBe('push')
-    // Widened again, the command switches the recorded mode.
-    h.view.update({ width: 420, viewportWidth: 1440, canShow: true })
-    act(() => { h.controller.toggleExpanded() })
     fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
     expect(h.layout().expanded).toBe(true)
     expect(h.layout().mode).toBe('fullscreen')
-  })
-
-  it('preserves manual fullscreen through narrow and wide viewport changes', async () => {
-    const h = await mountSeat()
-    h.open()
+    const stored = h.instance.getSnapshot()
+    for (const viewportWidth of [1180, 1181, 1440, 390]) {
+      h.view.update({ width: 336, viewportWidth, canShow: true })
+      expect(h.instance.getSnapshot()).toBe(stored)
+      expect(h.frame.openRightbar).toHaveBeenLastCalledWith(true, true)
+    }
     fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
-    const stored = h.instance.getSnapshot()
-    h.view.update({ width: 420, viewportWidth: 500, canShow: false })
-    expect(h.frame.openRightbar).toHaveBeenLastCalledWith(false, true)
-    h.view.update({ width: 420, viewportWidth: 1440, canShow: true })
-    expect(h.frame.openRightbar).toHaveBeenLastCalledWith(true, true)
-    expect(h.instance.getSnapshot()).toBe(stored)
-  })
-
-  it('collapses a normal panel that cannot fit without clearing records or reopening on growth', async () => {
-    const h = await mountSeat()
-    const tab = h.open()
-    const signal = h.bodies.get(tab.id)!.tab.signal
-    h.view.update({ width: 420, viewportWidth: 900, canShow: false })
-    expect(h.layout().expanded).toBe(false)
-    expect(h.layout().tabs[tab.id]).toBeDefined()
-    expect(signal.aborted).toBe(false)
-    const stored = h.instance.getSnapshot()
-    h.view.update({ width: 420, viewportWidth: 1440, canShow: true })
-    expect(h.instance.getSnapshot()).toBe(stored)
-    expect(h.layout().expanded).toBe(false)
+    expect(h.layout().expanded).toBe(true)
+    expect(h.layout().mode).toBe('push')
   })
 })
 
@@ -713,16 +675,18 @@ describe('RightbarSeat fullscreen entry', () => {
 
   it('reports when reduced motion cancels the entering transition', async () => {
     const h = await mountSeat(767, false)
+    act(() => { h.actions.setMode(SESSION, 'fullscreen') })
     const slide = transition()
     vi.spyOn(element(h.view.container, '[data-sidebar-right-panel]'), 'getAnimations').mockReturnValue([slide.animation])
     h.open()
     expect(h.frame.openRightbar).not.toHaveBeenCalled()
     await act(async () => { slide.cancel(); await Promise.allSettled([slide.animation.finished]) })
-    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(false, true)
+    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(true, true)
   })
 
   it('waits for a replacement transform after cancellation', async () => {
     const h = await mountSeat(767, false)
+    act(() => { h.actions.setMode(SESSION, 'fullscreen') })
     const first = transition()
     const replacement = transition()
     const animations = vi.spyOn(element(h.view.container, '[data-sidebar-right-panel]'), 'getAnimations')
@@ -732,7 +696,7 @@ describe('RightbarSeat fullscreen entry', () => {
     await act(async () => { first.cancel(); await Promise.allSettled([first.animation.finished]) })
     expect(h.frame.openRightbar).not.toHaveBeenCalled()
     await act(async () => { replacement.finish(); await replacement.animation.finished })
-    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(false, true)
+    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(true, true)
   })
 
   it.each(['close', 'push', 'session', 'unmount'])('ignores a late completion after %s', async (change) => {
@@ -756,7 +720,7 @@ describe('RightbarSeat fullscreen entry', () => {
     expect(h.frame.closeRightbar).toHaveBeenCalledTimes(closeCalls)
   })
 
-  it('uses the current viewport report when entry crosses the fullscreen breakpoint', async () => {
+  it('retains explicit fullscreen while entry crosses the overlay breakpoint', async () => {
     const h = await mountSeat()
     act(() => { h.actions.setMode(SESSION, 'fullscreen') })
     const slide = transition()
@@ -765,7 +729,7 @@ describe('RightbarSeat fullscreen entry', () => {
     h.view.update({ width: 420, viewportWidth: 500, canShow: false })
     expect(h.frame.openRightbar).not.toHaveBeenCalled()
     await act(async () => { slide.finish(); await slide.animation.finished })
-    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(false, true)
+    expect(h.frame.openRightbar).toHaveBeenCalledExactlyOnceWith(true, true)
   })
 
   it('does not delay normal presentation behind its slide', async () => {

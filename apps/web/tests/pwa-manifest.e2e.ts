@@ -51,7 +51,7 @@ it('ships install metadata with the built web application', async () => {
   expect(index).toContain('<link rel="manifest" href="./manifest.webmanifest" />')
   expect(index).toContain('<link rel="apple-touch-icon" href="./apple-touch-icon.png" />')
   expect(index).toContain('<meta name="mobile-web-app-capable" content="yes" />')
-  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="DSH" />')
+  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="LXO" />')
   // No `theme-color` here: `ThemePresenter` owns the single metadata node and
   // follows the resolved in-application theme, which a static media query
   // cannot. The manifest's `theme_color` covers the surrounding chrome before
@@ -62,8 +62,8 @@ it('ships install metadata with the built web application', async () => {
   // so only an absent `id`, which defaults to the resolved `start_url`, gives
   // each mount its own identity. `public-mount.e2e.ts` reads the resolved form.
   expect(manifest).toEqual({
-    name: 'DeepSeek Harness',
-    short_name: 'DSH',
+    name: 'Lingxi Office',
+    short_name: 'LXO',
     start_url: './',
     scope: './',
     // `standalone` keeps the phone's status bar; `fullscreen` hides it and the
@@ -115,9 +115,10 @@ it('ships fixed-color favicons selected by document media queries', async () => 
   const light = await readFile(join(DIST_ROOT, 'favicon.svg'), 'utf8')
   const dark = await readFile(join(DIST_ROOT, 'favicon-dark.svg'), 'utf8')
   expect(light).not.toContain('<style>')
-  expect(light).toContain('fill="#000"')
-  expect(dark).toContain('fill="#fff"')
-  expect(dark.replace('fill="#fff"', 'fill="#000"')).toBe(light)
+  for (const fill of ['#EF2428', '#F36F0A', '#F2CC0C', '#058DD8', '#DF1E6B', '#CA10CA']) {
+    expect(light).toContain(`fill="${fill}"`)
+  }
+  expect(dark).toBe(light)
 })
 
 it('preserves fractional coverage along the Apple icon curves', async () => {
@@ -135,20 +136,20 @@ it('preserves fractional coverage along the Apple icon curves', async () => {
       const context = canvas.getContext('2d')!
       context.drawImage(image, 0, 0, 180, 180)
       const { data } = context.getImageData(0, 0, 180, 180)
-      const brightness = (x: number, y: number): number => {
+      const minimumChannel = (x: number, y: number): number => {
         const at = (y * 180 + x) * 4
-        return (data[at]! + data[at + 1]! + data[at + 2]!) / 3
+        return Math.min(data[at]!, data[at + 1]!, data[at + 2]!)
       }
       let partial = 0
       for (let y = 1; y < 179; y += 1) {
         for (let x = 1; x < 179; x += 1) {
-          const value = brightness(x, y)
+          const value = minimumChannel(x, y)
           if (value <= 85 || value >= 200) continue
           // Neighboring ink and background distinguish edge coverage from the
-          // source's gradients and shadows, which remain in both renderings.
+          // petal interiors, which remain opaque in both renderings.
           const neighbors: number[] = []
           for (let dy = -1; dy <= 1; dy += 1) {
-            for (let dx = -1; dx <= 1; dx += 1) neighbors.push(brightness(x + dx, y + dy))
+            for (let dx = -1; dx <= 1; dx += 1) neighbors.push(minimumChannel(x + dx, y + dy))
           }
           if (Math.min(...neighbors) < 70 && Math.max(...neighbors) > 220) partial += 1
         }

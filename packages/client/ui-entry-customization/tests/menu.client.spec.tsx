@@ -12,6 +12,7 @@ import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytic
 import { EntryMenuContent } from '../src/client/EntryMenuContent.tsx'
 import { en } from '../src/client/locales.ts'
 import { apply, inject } from '../src/client/index.ts'
+import { ENTRY_CUSTOMIZATION_CONFIG_GLOBAL, type Config } from '../src/config.ts'
 
 type Seats = 'sidebar.panellist.actions' | 'conversation.session.header.views.actions' | 'sidebar.right.tab.guide.actions'
 const SEATS = ['sidebar.panellist.actions', 'conversation.session.header.views.actions', 'sidebar.right.tab.guide.actions'] as const
@@ -32,7 +33,7 @@ function content(overrides: Partial<ContentProps> = {}) {
   }
   const props = {
     entries: [{ id: 'notes', label: 'Notes', pinned: true }, { id: 'tasks', label: 'Tasks', pinned: false }],
-    region: 'sidebar', t: makeTranslate(en),
+    region: 'sidebar', showBrowsePlugins: true, showCreatePlugin: true, t: makeTranslate(en),
     usePluginNavigation: <T,>(select: (present: boolean) => T): T => select(true),
     usePanelInfo: unused, useSessions: unused, useSessionStatus: unused, useSessionRetainInfo: unused,
     useResource: unused, useWorkspaces: unused,
@@ -98,6 +99,20 @@ describe('More menu rows', () => {
     expect(b.onOpen).not.toHaveBeenCalled()
     expect(b.onPinnedChange).not.toHaveBeenCalled()
   })
+
+  it('keeps folded Conversation Views when both external actions are hidden', () => {
+    const b = content({
+      region: 'conversation', showBrowsePlugins: false, showCreatePlugin: false,
+      entries: [
+        { id: 'notes', label: 'Notes', pinned: false, active: true },
+        { id: 'tasks', label: 'Tasks', pinned: false, active: false },
+      ],
+    })
+    expect(b.view.getAllByRole('menuitem').map(row => row.textContent)).toEqual(['Notes', 'Tasks'])
+    expect(b.view.queryByRole('separator')).toBeNull()
+    expect(b.view.queryByRole('menuitem', { name: 'Browse other plugins' })).toBeNull()
+    expect(b.view.queryByRole('menuitem', { name: 'Create your plugin' })).toBeNull()
+  })
 })
 
 function Frame({ renderSlot }: PropsRenderSlots<Seats>) {
@@ -119,8 +134,10 @@ function Frame({ renderSlot }: PropsRenderSlots<Seats>) {
 
 async function bench(
   language: 'en' | 'zh' = 'en',
-  { analytics = true, navigation = true }: { analytics?: boolean; navigation?: boolean } = {},
+  { analytics = true, navigation = true, config }:
+  { analytics?: boolean; navigation?: boolean; config?: Config } = {},
 ) {
+  if (config !== undefined) vi.stubGlobal(ENTRY_CUSTOMIZATION_CONFIG_GLOBAL, config)
   const runtime = await SlotTestRuntime.create()
   runtimes.add(runtime)
   const openList = vi.fn(), startSession = vi.fn(), track = vi.fn<TrackProductEvent>()
@@ -184,6 +201,14 @@ describe('More menu registrations', () => {
       expect(b.runtime.slots.entries(seat)).toEqual([])
       expect(within(b.view.getByRole('menu', { name: seat })).queryByRole('menuitem')).toBeNull()
     }
+  })
+
+  it('keeps only folded Conversation View navigation when external actions are disabled', async () => {
+    const b = await bench('en', { config: { showBrowsePlugins: false, showCreatePlugin: false } })
+    expect(b.runtime.slots.entries('sidebar.panellist.actions')).toEqual([])
+    expect(b.runtime.slots.entries('sidebar.right.tab.guide.actions')).toEqual([])
+    expect(b.runtime.slots.entries('conversation.session.header.views.actions').map(entry => entry.options.id))
+      .toEqual(['entry-customization'])
   })
 
   it.each([

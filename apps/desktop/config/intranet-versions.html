@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lingxi-office · 内网下载</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7fa; color: #192536; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 800px; margin: 64px auto; padding: 0 24px; }
+    header { margin-bottom: 36px; }
+    h1 { margin: 0 0 8px; font-size: 36px; letter-spacing: -1px; }
+    p { color: #526174; }
+    article { background: white; padding: 24px; margin: 16px 0; border: 1px solid #dde3eb; border-radius: 16px; }
+    h2, h3 { margin: 0 0 8px; font-size: 21px; overflow-wrap: anywhere; }
+    #history { margin-top: 36px; }
+    nav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+    button { padding: 10px 16px; border: 1px solid #dde3eb; border-radius: 8px; background: white; color: #192536; font: inherit; cursor: pointer; }
+    button:disabled { color: #697586; background: #edf0f4; cursor: default; }
+    a { display: inline-block; padding: 10px 20px; background: #215bcc; color: white; border-radius: 8px; text-decoration: none; }
+    a:focus-visible, button:focus-visible, #history-title:focus-visible { outline: 3px solid #192536; outline-offset: 4px; }
+    small { color: #526174; }
+    @media (max-width: 480px) { main { margin-top: 32px; } h1 { font-size: 30px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><small>内网软件下载</small><h1>lingxi-office</h1><p>Windows 64 位安装包。已安装的用户也可以在应用内检查更新。</p></header>
+    <section id="releases" aria-live="polite"><p>正在加载版本列表…</p></section>
+    <p><small>首次使用请下载安装包并运行。更新前请保存工作。</small></p>
+  </main>
+  <script>
+    const releases = document.getElementById('releases');
+    fetch('./releases.json', { cache: 'no-store' }).then(response => {
+      if (!response.ok) throw new Error('版本列表暂时不可用');
+      return response.json();
+    }).then(items => {
+      releases.replaceChildren();
+      if (!items.length) { releases.textContent = '暂无可下载的版本。'; return; }
+      const entries = items.map(item => {
+        const url = new URL(item.url, location.origin);
+        if (url.origin !== location.origin || !url.pathname.startsWith('/versions/') || !url.pathname.endsWith('.exe')) throw new Error('安装包地址无效');
+        return { ...item, href: url.href };
+      });
+      function createCard(item, latest = false) {
+        const card = document.createElement('article');
+        const title = document.createElement(latest ? 'h2' : 'h3');
+        title.textContent = `${latest ? '最新版本 · ' : ''}${item.version}`;
+        const info = document.createElement('p');
+        info.textContent = `Windows x64 · ${(item.bytes / 1024 / 1024).toFixed(1)} MB`;
+        const link = document.createElement('a');
+        link.href = item.href;
+        link.textContent = '下载安装包';
+        link.setAttribute('download', '');
+        card.append(title, info, link);
+        return card;
+      }
+      releases.append(createCard(entries[0], true));
+      const history = entries.slice(1);
+      if (!history.length) return;
+      const pageSize = 5;
+      const pageCount = Math.ceil(history.length / pageSize);
+      let page = 0;
+      const section = document.createElement('section');
+      section.id = 'history';
+      section.setAttribute('aria-labelledby', 'history-title');
+      const heading = document.createElement('h2');
+      heading.id = 'history-title';
+      heading.tabIndex = -1;
+      heading.textContent = `历史版本（${history.length}）`;
+      const list = document.createElement('div');
+      const navigation = document.createElement('nav');
+      navigation.setAttribute('aria-label', '历史版本分页');
+      const previous = document.createElement('button');
+      const next = document.createElement('button');
+      previous.type = next.type = 'button';
+      previous.textContent = '上一页';
+      next.textContent = '下一页';
+      const status = document.createElement('span');
+      function renderPage() {
+        list.replaceChildren(...history.slice(page * pageSize, (page + 1) * pageSize).map(item => createCard(item)));
+        status.textContent = `第 ${page + 1} / ${pageCount} 页`;
+        previous.disabled = page === 0;
+        next.disabled = page === pageCount - 1;
+      }
+      previous.addEventListener('click', () => {
+        if (page === 0) return;
+        page--;
+        renderPage();
+        heading.focus();
+      });
+      next.addEventListener('click', () => {
+        if (page === pageCount - 1) return;
+        page++;
+        renderPage();
+        heading.focus();
+      });
+      navigation.append(previous, status, next);
+      section.append(heading, list);
+      if (pageCount > 1) section.append(navigation);
+      releases.append(section);
+      renderPage();
+    }).catch(() => { releases.textContent = '无法加载下载列表，请稍后刷新；如持续失败，请联系内网管理员。'; });
+  </script>
+</body>
+</html>

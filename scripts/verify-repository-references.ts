@@ -31,6 +31,20 @@ function isMaintained(file: string): boolean {
   return !excludedPrefixes.some(prefix => file.startsWith(prefix))
 }
 
+/** Mask uv's decimal artifact sizes while preserving strings, comments and line positions. */
+function withoutArtifactSizes(file: string, source: string): string {
+  if (file !== 'uv.lock' && !file.endsWith('/uv.lock')) return source
+  // Consume TOML strings and comments before looking for bare size assignments.
+  const tokens = new RegExp([
+    String.raw`"""(?:\\[\s\S]|(?!""")[^\\])*"""`,
+    String.raw`'''[\s\S]*?'''`,
+    String.raw`"(?:\\[\s\S]|[^"\\])*"|'[^']*'|#[^\r\n]*`,
+    String.raw`(?<![\w.-])size[ \t]*=[ \t]*(\d+)(?=[ \t]*(?:[,}\r\n#]|$))`,
+  ].join('|'), 'g')
+  return source.replace(tokens, (token: string, size: string | undefined) =>
+    size === undefined ? token : token.slice(0, -size.length) + ' '.repeat(size.length))
+}
+
 /**
  * Inspect a maintained source file against known commit identifiers.
  * @param file - Repository-relative path used in diagnostics and exclusions.
@@ -45,7 +59,7 @@ export function findRepositoryReferences(
 ): RepositoryReference[] {
   if (!isMaintained(file)) return []
   const references: RepositoryReference[] = []
-  for (const [index, line] of source.split('\n').entries()) {
+  for (const [index, line] of withoutArtifactSizes(file, source).split('\n').entries()) {
     if (organizationUrl.test(canonicalReferenceText(line).replace(kitRepositoryUrl, ''))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }

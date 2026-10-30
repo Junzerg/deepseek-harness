@@ -132,8 +132,8 @@ async function collectedRegions(page: Page, selector: string): Promise<Collected
 /**
  * Interactive boxes whose press cannot reach the page, as printable descriptions.
  * A sample counts only where the browser's own hit test reaches the control: a
- * box clipped away by its column (the collapsed sidebar's hidden controls sit at
- * negative x) is not hittable anywhere it overlaps a drag row, and a press there
+ * box clipped away by its column is not hittable where it overlaps a drag row,
+ * and a press there
  * belongs to whatever is painted.
  * @param regions - collected boxes in DOM order.
  * @returns one description per interactive box with a hittable sample inside the drag surface.
@@ -231,7 +231,7 @@ describe('web e2e: macOS window drag coverage', () => {
     return { page, tripwire }
   }
 
-  it.each(['darwin', 'win32'] as const)('%s keeps compact Plugins controls below native chrome in both sidebar states', async (platform) => {
+  it.each(['darwin', 'win32'] as const)('%s keeps compact Plugins controls below native chrome beside the fixed sidebar', async (platform) => {
     const { page, tripwire } = await desktopPage(platform)
     try {
       await page.setViewportSize({ width: 1280, height: 480 })
@@ -250,38 +250,31 @@ describe('web e2e: macOS window drag coverage', () => {
           buttons: buttons.map((button) => { const rect = button.getBoundingClientRect(); return { x: rect.x, y: rect.y } }),
         }
       })
-      for (const collapsed of [false, true]) {
-        if (collapsed) {
-          await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-        }
-        await settled(page)
-        await body.evaluate((element) => { element.scrollTop = 0 })
-        await page.waitForFunction(() => !document.querySelector('[data-plugin-bar]')?.hasAttribute('data-compact'))
-        const before = await toolbarGeometry()
-        expect(before.top).toBe(platform === 'darwin' ? 0 : 40)
-        expect(before.padding).toBe(platform === 'darwin' ? 76 : 28)
-        expect(before.buttons).toHaveLength(2)
-        await body.evaluate((element) => { element.scrollTop = 120 })
-        await page.waitForFunction(() => document.querySelector('[data-plugin-bar]')?.hasAttribute('data-compact'))
-        const after = await toolbarGeometry()
-        // macOS only needs the top strip cleared while the sidebar is collapsed; with it open the
-        // native controls live in the sidebar, so the compact bar keeps its own 16px spacing.
-        const compactTop = platform === 'darwin' && collapsed ? 56 : 16
-        expect(after.padding).toBe(before.padding)
-        expect(await bar.evaluate(element => Number.parseFloat(getComputedStyle(element, '::before').height))).toBe(compactTop + 48)
-        expect(after.buttons).toEqual(before.buttons.map(button => ({ ...button, y: button.y - (before.padding - compactTop) })))
-        expect(after.buttons.every(button => button.y >= (platform === 'darwin' ? compactTop : 16))).toBe(true)
-        expect(await body.evaluate(element => element.getBoundingClientRect().top))
-          .toBe(await bar.evaluate(element => element.getBoundingClientRect().top))
-        if (platform === 'darwin') expect(swallowedBoxes(await collectedRegions(page, INTERACTIVE_SELECTOR))).toEqual([])
-      }
+      await settled(page)
+      await body.evaluate((element) => { element.scrollTop = 0 })
+      await page.waitForFunction(() => !document.querySelector('[data-plugin-bar]')?.hasAttribute('data-compact'))
+      const before = await toolbarGeometry()
+      expect(before.top).toBe(platform === 'darwin' ? 0 : 40)
+      expect(before.padding).toBe(platform === 'darwin' ? 76 : 28)
+      expect(before.buttons).toHaveLength(2)
+      await body.evaluate((element) => { element.scrollTop = 120 })
+      await page.waitForFunction(() => document.querySelector('[data-plugin-bar]')?.hasAttribute('data-compact'))
+      const after = await toolbarGeometry()
+      const compactTop = 16
+      expect(after.padding).toBe(before.padding)
+      expect(await bar.evaluate(element => Number.parseFloat(getComputedStyle(element, '::before').height))).toBe(compactTop + 48)
+      expect(after.buttons).toEqual(before.buttons.map(button => ({ ...button, y: button.y - (before.padding - compactTop) })))
+      expect(after.buttons.every(button => button.y >= (platform === 'darwin' ? compactTop : 16))).toBe(true)
+      expect(await body.evaluate(element => element.getBoundingClientRect().top))
+        .toBe(await bar.evaluate(element => element.getBoundingClientRect().top))
+      if (platform === 'darwin') expect(swallowedBoxes(await collectedRegions(page, INTERACTIVE_SELECTOR))).toEqual([])
       expect(tripwire.pageErrors).toEqual([])
     } finally { await page.close() }
   })
 
   it.each([
     ['darwin', false], ['darwin', true], ['win32', false], ['win32', true],
-  ] as const)('%s scopes compact spacing with tabs=%s to the collapsed macOS header at every width', async (platform, hasTabs) => {
+  ] as const)('%s scopes compact spacing with tabs=%s below native chrome at every width', async (platform, hasTabs) => {
     const host = hasTabs ? await launchWebScaffold({
       profile: { packages: [], bundles: ['@deepseek-ai/dsh-experimental-plugin-market-bundle'] },
     }) : scaffold
@@ -295,7 +288,6 @@ describe('web e2e: macOS window drag coverage', () => {
         const body = page.locator('[data-plugin-body]')
         const control = bar.locator(hasTabs ? '[role="tablist"]' : '[data-plugin-toolbar]')
         const top = async () => (await control.boundingBox())!.y - (await bar.boundingBox())!.y
-        await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
         for (const width of [1280, 801, 520, 1280]) {
           await page.setViewportSize({ width, height: 480 })
           await settled(page)
@@ -305,12 +297,14 @@ describe('web e2e: macOS window drag coverage', () => {
             - (await bar.boundingBox())!.y).toBe(platform === 'darwin' ? 76 : 28)
           await body.evaluate((element) => { element.scrollTop = 500 })
           await page.waitForFunction(() => document.querySelector('[data-plugin-bar]')?.hasAttribute('data-compact'))
-          const inset = platform === 'darwin' ? 56 : 16
+          const inset = 16
           expect(await top()).toBe(inset)
+          const toolbar = bar.locator('[data-plugin-toolbar]')
+          const paintedBottom = Math.max((await control.boundingBox())!.y + (await control.boundingBox())!.height,
+            (await toolbar.boundingBox())!.y + (await toolbar.boundingBox())!.height) - (await bar.boundingBox())!.y + 16
           expect(await bar.evaluate(element => Number.parseFloat(getComputedStyle(element, '::before').height)))
-            .toBe(inset + (hasTabs ? 34 : 32) + 16)
+            .toBe(paintedBottom)
         }
-        await page.getByRole('button', { name: 'Open sidebar', exact: true }).last().click()
         await settled(page)
         await body.evaluate((element) => { element.scrollTop = 500 })
         await expect.poll(top).toBe(16)
@@ -353,10 +347,9 @@ describe('web e2e: macOS window drag coverage', () => {
       const panel = await rectOf(page, '[data-sidebar-right-panel]')
       const tabs = await rectOf(page, '[data-conversation-tabs]')
       const header = await rectOf(page, '[data-slot="conversation.header"] > header')
-      const seat = await rectOf(page, '[data-shell-leading]')
       // The sidebar column drags through its own rows (ui-sidebar), so its
       // coverage is the rows' geometry rather than a frame band's height.
-      const toggle = await rectOf(page, 'button[aria-label="Collapse sidebar"]')
+      const sidebar = await rectOf(page, '[class*="sidebarCol"]')
 
       const probes: CoverageProbe[] = [
         {
@@ -392,30 +385,12 @@ describe('web e2e: macOS window drag coverage', () => {
           drag: false,
         },
       ]
-      if (toggle.width > 0) {
-        probes.push(
-          {
-            row: 'sidebar top strip',
-            what: 'the blank run left of the collapse toggle',
-            at: () => [toggle.x - 40, toggle.y + toggle.height / 2],
-            drag: true,
-          },
-          {
-            row: 'sidebar column',
-            what: 'the content run below the chrome rows',
-            at: () => [toggle.x - 40, toggle.y + toggle.height + 70],
-            drag: false,
-          },
-        )
-      }
-      if (seat.width > 0) {
-        probes.push({
-          row: 'shell.leading seat',
-          what: 'the row of window-chrome controls',
-          at: () => [seat.x + 4, seat.y + seat.height / 2],
-          drag: false,
-        })
-      }
+      probes.push(
+        { row: 'sidebar top strip', what: 'the blank run beside the traffic lights',
+          at: () => [sidebar.x + 160, 24], drag: true },
+        { row: 'sidebar column', what: 'the content below the chrome rows',
+          at: () => [sidebar.x + 160, 180], drag: false },
+      )
 
       for (const probe of probes) {
         const [x, y] = probe.at()
@@ -437,31 +412,20 @@ describe('web e2e: macOS window drag coverage', () => {
     }
   }, 180_000)
 
-  it('keeps the Conversation header draggable over the collapsed column, and the seat out of it', async () => {
+  it('keeps the fixed sidebar drag strip separate from its navigation', async () => {
     const { page, tripwire } = await desktopPage()
     try {
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
-      await page.locator('[data-shell-leading]').waitFor({ state: 'visible', timeout: 15_000 })
       await settled(page)
+      expect(await page.getByRole('button', { name: /^(Open|Collapse) sidebar$/ }).count()).toBe(0)
+      const sidebar = await rectOf(page, '[class*="sidebarCol"]')
+      expect(sidebar.width).toBe(236)
       const regions = await collectedRegions(page, INTERACTIVE_SELECTOR)
-      const header = await rectOf(page, '[data-slot="conversation.header"] > header')
-      const seat = await rectOf(page, '[data-shell-leading]')
-
-      // With the column hidden the centre starts at the frame's left edge, where
-      // the Conversation header owns the run.
-      expect(
-        isDraggableAt(regions, header.x + 40, header.y + 4),
-        'the Conversation header over the frame’s left edge',
-      ).toBe(true)
-      expect(
-        isDraggableAt(regions, seat.x + seat.width / 2, seat.y + seat.height / 2),
-        'the seat holding the reopen controls',
-      ).toBe(false)
-
-      expect(swallowedBoxes(regions), 'interactive boxes inside the drag surface').toEqual([])
+      expect(isDraggableAt(regions, sidebar.x + 160, 24)).toBe(true)
+      expect(isDraggableAt(regions, sidebar.x + 160, 180)).toBe(false)
+      expect(swallowedBoxes(regions)).toEqual([])
       expect(tripwire.pageErrors).toEqual([])
     } catch (error) {
-      await saveFailureShot(page, 'window-drag-coverage-collapsed')
+      await saveFailureShot(page, 'window-drag-coverage-fixed-sidebar')
       throw error
     } finally {
       await page.close()

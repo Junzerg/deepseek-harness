@@ -518,7 +518,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
     const fileLink = page.locator('[data-variant="read"] button').first()
     await expandOwningTurnProcess(page, fileLink)
     await fileLink.waitFor({ timeout: 10_000 })
-    const frame = page.locator('[style*="grid-template-columns"]').first()
+    const frame = page.locator('[style*="--dsh-sidebar-track-width"]').first()
     expect(await frame.getAttribute('data-rightbar-collapsed')).toBe('true')
     const column = page.locator('[data-rightbar-col]')
     try {

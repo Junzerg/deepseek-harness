@@ -19,7 +19,7 @@ export const CLIENT_BUILD_PROFILE_SELECTOR = 'DSH_BUILD_CLIENT_PROFILE'
 /** Public client environment required by official DSH artifacts. */
 const OFFICIAL_CLIENT_BUILD_ENVIRONMENT = {
   DSH_CLIENT_BUILD_PROFILE: 'official',
-  DSH_CLIENT_TITLE: 'DeepSeek Harness',
+  DSH_CLIENT_TITLE: 'Lingxi Office',
 } as const
 
 /** Public variable carrying the source commit embedded in client artifacts. */
@@ -27,6 +27,13 @@ const CLIENT_COMMIT_HASH_VARIABLE = 'DSH_CLIENT_COMMIT_HASH'
 
 /** Public variable carrying the repository package version embedded in client artifacts. */
 const CLIENT_VERSION_VARIABLE = 'DSH_CLIENT_VERSION'
+
+/**
+ * Fork-local: desktop packaging passes its confirmed build version here so local-build client
+ * artifacts (sidebar badge, update-policy client header) report the published version instead
+ * of the repository product version.
+ */
+const DESKTOP_BUILD_VERSION_VARIABLE = 'DSH_DESKTOP_BUILD_VERSION'
 
 /** Repository-relative path of the complete client build record. */
 export const CLIENT_BUILD_RECORD_PATH = '.dsh-build/client-build-environment.json'
@@ -124,12 +131,16 @@ export function repositoryClientBuildEnvironment(
   delete inherited.DSH_CLIENT_COMMIT_HASH
   delete inherited.DSH_CLIENT_GIT_DIRTY
   delete inherited.DSH_CLIENT_VERSION
+  const packagedVersion = environment[DESKTOP_BUILD_VERSION_VARIABLE]
+  if (packagedVersion !== undefined && !/^\d+\.\d+\.\d+[0-9A-Za-z.+~-]*$/u.test(packagedVersion)) {
+    throw new Error(`${DESKTOP_BUILD_VERSION_VARIABLE} must be a semantic version; got ${JSON.stringify(packagedVersion)}`)
+  }
   const dirty = repositoryGitDirty(root)
   return {
     ...inherited,
     DSH_CLIENT_COMMIT_HASH: repositoryCommitHash(root, environment),
     ...(dirty === true ? { DSH_CLIENT_GIT_DIRTY: 'true' } : {}),
-    DSH_CLIENT_VERSION: repositoryVersion(root),
+    DSH_CLIENT_VERSION: packagedVersion ?? repositoryVersion(root),
   }
 }
 

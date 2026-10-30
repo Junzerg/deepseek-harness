@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { CommandDefinitionId } from '@deepseek-ai/dsh-commands/brand'
 import Schema from '@deepseek-ai/schemastery'
+import { Encrypter } from 'age-encryption'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type {} from '@deepseek-ai/dsh-attachment'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
@@ -48,10 +49,13 @@ export { SESSION_LOG_EXPORT_PATH } from './routes.ts'
 export interface Config {
   /** DEFLATE level for each ZIP entry. @default 6 */
   readonly compressionLevel?: SessionLogCompressionLevel
+  /** age public recipient; nonempty values encrypt the complete ZIP without plaintext fallback. */
+  readonly encryptionRecipient?: string
 }
 
 /** Validate Session-log archive configuration. */
 export const Config: Schema<Config> = Schema.object({
+  encryptionRecipient: Schema.string(),
   compressionLevel: Schema.number().step(1).min(0).max(9)
     .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as Schema<SessionLogCompressionLevel>,
 })
@@ -78,6 +82,9 @@ const REQUESTED: CommandResult = {
  * @param config - resolved compression policy.
  */
 export function apply(ctx: Context, config: Config = {}): void {
+  const recipient = config.encryptionRecipient
+  const encrypter = recipient ? new Encrypter() : undefined
+  if (encrypter !== undefined && recipient !== undefined) encrypter.addRecipient(recipient)
   ctx.effect(() => ctx.commands.register({
     definitionId: brandString<CommandDefinitionId>('@deepseek-ai/dsh-session-log-export'),
     name: 'export',
@@ -95,6 +102,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         ctx,
         request,
         config.compressionLevel ?? DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
+        encrypter,
       )
       if (request.method === 'GET') return response
       await response.body?.cancel()
@@ -174,6 +182,7 @@ async function sessionLogExportResponse(
   ctx: Context,
   request: Request,
   compressionLevel: SessionLogCompressionLevel,
+  encrypter?: Encrypter,
 ): Promise<Response> {
   const url = new URL(request.url)
   const query = Object.fromEntries(url.searchParams)
@@ -214,21 +223,26 @@ async function sessionLogExportResponse(
   if (rootContent === undefined) {
     return new Response('session not found', { status: 404 })
   }
-  const response = new Response(
-    streamSessionLogZip(
-      ready,
-      rootContent,
-      sessionId,
-      descendantsValue === 'true',
-      compressionLevel,
-      request.signal,
-    ),
-    {
-      headers: {
-        'content-type': 'application/zip',
-        'content-disposition': `attachment; filename="${sessionLogZipFilename(sessionId)}"`,
-      },
-    },
+  const zip = streamSessionLogZip(
+    ready, rootContent, sessionId, descendantsValue === 'true', compressionLevel, request.signal,
   )
+  let body: ReadableStream<Uint8Array> = zip
+  try {
+    if (encrypter !== undefined) body = await encrypter.encrypt(zip)
+    request.signal.throwIfAborted()
+  } catch {
+    await body.cancel().catch(() => {})
+    request.signal.throwIfAborted()
+    return new Response('session log encryption failed', { status: 500 })
+  }
+  const encrypted = encrypter !== undefined
+  const response = new Response(body, {
+    headers: {
+      'content-type': encrypted ? 'application/octet-stream' : 'application/zip',
+      'content-disposition': `attachment; filename="${sessionLogZipFilename(sessionId)}${encrypted ? '.age' : ''}"`,
+      'cache-control': 'no-store',
+      ...encrypted ? { 'x-lxo-archive-format': 'age' } : {},
+    },
+  })
   return response
 }

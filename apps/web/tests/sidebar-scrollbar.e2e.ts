@@ -321,11 +321,39 @@ describe('web e2e: sidebar session list scrollbar (reserved gutter / themed thum
     // Pin presence, not width, because the width is platform-dependent.
     expect(metrics.band).toBeGreaterThan(0)
     expect(metrics.scrollbarEdgeOffset).toBe(2)
-    expect(metrics.rowEdgeInset).toBe(12)
+    expect(metrics.rowEdgeInset).toBe(8)
     // Measure against the bar because overlay scrollbars do not move the client edge.
     expect(metrics.timeCoveredBy).toBe(0)
     expect(metrics.timeRight).toBeLessThanOrEqual(metrics.clientRight)
     expect(metrics.clientRight).toBeLessThan(metrics.borderRight)
+    const shell = await page.evaluate(() => {
+      const list = document.querySelector<HTMLElement>('[role="tree"][aria-label="Sessions"]')!
+      const root = list.closest<HTMLElement>('[class*="regionArea"]')!.parentElement!
+      const logo = root.querySelector<HTMLElement>('[class*="logoRow"]')!
+      const foot = root.querySelector<HTMLElement>('[class*="footArea"]')!
+      const rect = root.getBoundingClientRect()
+      const logoTop = logo.getBoundingClientRect().top
+      const footTop = foot.getBoundingClientRect().top
+      list.scrollTop = list.scrollHeight
+      return {
+        width: rect.width,
+        fill: getComputedStyle(root).backgroundColor,
+        footerReachesBottom: foot.getBoundingClientRect().bottom === rect.bottom,
+        footerSeparated: getComputedStyle(foot).borderTopStyle === 'solid',
+        fixedEdges: logo.getBoundingClientRect().top === logoTop && foot.getBoundingClientRect().top === footTop,
+        scrolled: list.scrollTop > 0,
+        listAboveFooter: list.getBoundingClientRect().bottom <= footTop,
+      }
+    })
+    expect(shell).toEqual({
+      width: 236,
+      fill: 'rgb(247, 247, 247)',
+      footerReachesBottom: true,
+      footerSeparated: true,
+      fixedEdges: true,
+      scrolled: true,
+      listAboveFooter: true,
+    })
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
 
@@ -359,12 +387,12 @@ describe('web e2e: sidebar session list scrollbar (reserved gutter / themed thum
 
   it('keeps the row background inset when overflow disappears', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-sidebar-scrollbar-stable-inset'))
-    expect(await measureRowInset(page)).toEqual({ overflows: true, rowEdgeInset: 12 })
+    expect(await measureRowInset(page)).toEqual({ overflows: true, rowEdgeInset: 8 })
     const bucket = page.getByText('Ungrouped', { exact: true }).locator('..').locator('..')
     await bucket.click()
     try {
       await expect.poll(async () => (await measureRowInset(page)).overflows, { timeout: 10_000 }).toBe(false)
-      expect(await measureRowInset(page)).toEqual({ overflows: false, rowEdgeInset: 12 })
+      expect(await measureRowInset(page)).toEqual({ overflows: false, rowEdgeInset: 8 })
     } finally {
       await expandSeededSessions(page)
     }

@@ -55,8 +55,8 @@
   transform: translateX(var(--dsh-sidebar-width));
   visibility: hidden;
   transition:
-    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    visibility 0s linear var(--ds-transition-duration-slow);
+    transform var(--dsh-layout-transition-duration, 180ms) var(--dsh-layout-transition-easing, ease),
+    visibility 0s linear var(--dsh-layout-transition-duration, 180ms);
 }
 
 .panel[data-sidebar-right-open] :global([data-dockkit-host='dock']),
@@ -64,7 +64,7 @@
 .panel[data-sidebar-right-open] :global([data-dockkit-divider]) {
   transform: none;
   visibility: visible;
-  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transition: transform var(--dsh-layout-transition-duration, 180ms) var(--dsh-layout-transition-easing, ease);
 }
 
 /* An item mounted by the opening has no closed style to slide from; it starts
@@ -105,7 +105,7 @@
    the second Grid column sits clear of the lights and uses the ordinary inset. */
 :global([data-platform='darwin']) .panel[data-sidebar-right-panel='fullscreen'] :global([data-dockkit-host='dock'][data-dockkit-column='0']) {
   /* Lights end near x 68; 88 leaves the same 20px of air the conversation
-     header's leading controls keep after them (ui-sidebar HeaderLeadingControls). */
+     sidebar's top strip keeps around them. */
   --dsh-dockkit-strip-inline-start: 88px;
 }
 
@@ -189,4 +189,10 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+  .panel[data-sidebar-right-open][data-sidebar-right-panel='push'] {
+    box-shadow: var(--dsw-elevation-panel);
+  }
 }

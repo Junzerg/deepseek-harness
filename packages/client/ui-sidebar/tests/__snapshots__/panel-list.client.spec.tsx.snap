@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sidebar task navigation > opens the More placeholder and updates its copy when the locale changes 1`] = `
+<main>
+  <div
+    data-slot="main"
+    style="display: contents;"
+  >
+    <section
+      class="morePage"
+    >
+      <div
+        class="morePageIcon"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="abc26da5"
+          fill="none"
+          height="48"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.6"
+          viewBox="0 0 24 24"
+          width="48"
+        />
+      </div>
+      <h2>
+        更多 · 敬请期待
+      </h2>
+      <p>
+        第一版聚焦核心能力：发起任务、单个专家与多个 Skill 协同完成工作。更多应用将在后续版本开放。
+      </p>
+    </section>
+  </div>
+</main>
+`;

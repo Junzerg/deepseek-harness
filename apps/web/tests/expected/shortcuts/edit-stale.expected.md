@@ -1,4 +1,4 @@
-- group "Toggle left sidebar":
+- group "Toggle right sidebar":
   - button "Restore default" [disabled]
   - button "Press a shortcut"
   - text: Shortcut configuration or available commands changed. Review the latest bindings before saving. Shortcut configuration or available commands changed. Review the latest bindings before saving.

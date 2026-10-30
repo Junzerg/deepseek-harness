@@ -46,10 +46,13 @@ describe('profile roster', () => {
 })
 
 describe('platform home patch', () => {
-  it('keeps the composed JSONL row config and sets the plaintext compression the Worker requires', () => {
+  it('keeps plaintext persistence and leaves unsupported pi-ai routes dormant', () => {
     expect(platformHomePatch(repoRoot, 'web')).toEqual([{
       id: 'session-persistence-jsonl',
       config: { root: { __jsExpr: "dshHomePath('sessions')" }, compression: 'none' },
+    }, {
+      id: 'llm-pi-ai',
+      config: { providers: {} },
     }])
   })
 })

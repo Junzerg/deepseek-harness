@@ -8,7 +8,7 @@ import { en, zh } from '../src/client/locales.ts'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
-function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', balance: 'zero' | 'positive' | 'bonus' | 'failed' | 'loading' = 'positive', status: DesktopOnboardingState['status'] = 'ready', copy: typeof zh = zh, creditFunded = false) {
+function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', balance: 'zero' | 'positive' | 'bonus' | 'failed' | 'loading' = 'positive', status: DesktopOnboardingState['status'] = 'ready', copy: typeof zh = zh, creditFunded = false, platformAvailable = true) {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   const track = vi.fn()
   const complete = vi.fn(async () => true)
@@ -35,7 +35,7 @@ function mount(step: DesktopOnboardingState['progress']['step'] = 'welcome', bal
         setState(current => ({ ...current, status: 'ready', progress: saved ? { ...current.progress, ...change } : current.progress }))
         return saved
       }}
-      account={{ view: { status: 'credential-stored', attempt: null, links: { usageUrl: 'https://example.com/usage', topUpUrl: 'https://example.com/top_up' } },
+      account={{ platformAvailable, view: { status: 'credential-stored', attempt: null, links: { usageUrl: 'https://example.com/usage', topUpUrl: 'https://example.com/top_up' } },
         avatar: undefined, failed: false, details: balance === 'loading' ? {} : { balance: balance === 'failed' ? { status: 'failed' } : { status: 'ready', bonusWallets: balance === 'bonus' ? [{ currency: 'CNY', balance: '1' }] : [], value: [{ currency: 'CNY', balance: balance === 'zero' || balance === 'bonus' ? '0E-16' : '12.34' }] } } }}
       openPlatformPage={openPlatformPage} />
   }
@@ -368,4 +368,18 @@ it('reports closing the skip-settings popup', () => {
   b.track.mockClear()
   fireEvent.click(screen.getByRole('button', { name: zh.close }))
   expect(b.track).toHaveBeenCalledExactlyOnceWith('onboarding_popup_click', { popup_name: 'skip_setting', button_name: 'close' })
+})
+
+it.each(['welcome', 'credit', 'purpose'] as const)('hides company credit onboarding when resuming %s', async (step) => {
+  const h = mount(step, 'loading', 'ready', zh, false, false)
+  if (step === 'welcome') {
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: zh.onboardingStart })) })
+    expect(h.update).toHaveBeenCalledWith({ step: 'purpose' })
+  }
+  expect(screen.getByText(zh.onboardingPurposeDescription)).toBeTruthy()
+  expect(screen.queryByText(zh.onboardingCredit)).toBeNull()
+  expect(screen.queryByRole('button', { name: zh.onboardingTopUp })).toBeNull()
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: zh.onboardingBack })) })
+  expect(h.update).toHaveBeenLastCalledWith({ step: 'welcome' })
+  expect(h.openPlatformPage).not.toHaveBeenCalled()
 })

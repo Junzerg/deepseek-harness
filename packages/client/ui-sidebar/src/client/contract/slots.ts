@@ -16,10 +16,8 @@ import type { ProductEventMap } from '@deepseek-ai/dsh-client-product-analytics/
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
-    /** Non-interactive notification inside the collapsed sidebar expand button. */
-    'sidebar.toggle.badge': { kind: 'single'; scope: 'root'; owner: Record<never, never> }
     /**
-     * Brand mark rendered in the expanded brand row and collapsed rail.
+     * Brand mark rendered in the brand row.
      * Declared by this package's `sidebar` entry; deployments may replace
      * the shell's fish fallback without replacing the surrounding controls.
      */
@@ -123,24 +121,23 @@ export interface SidebarPanelActionsOwnerProps {
  * boundary. Business data and actions arrive through the region's own inject.
  */
 export interface SidebarSectionOwnerProps {
-  /** Shell fold-state output: wide renders the full browser, rail the icon column. */
+  /** The fixed sidebar renders the full browser (always true). */
   wide: boolean
-  /** Rail icons request expansion; the browser rides the wide flip for focus. */
+  /** Expansion request retained for browser occupants; the fixed shell supplies a no-op. */
   expandSidebar: () => void
 }
 
 /**
- * Owner share of the sidebar settings seat: the column display state the
- * occupant's trigger row must render against (wide row vs rail icon).
+ * Owner share of the sidebar settings seat: the trigger renders a full row.
  */
 export interface SidebarSettingsOwnerProps {
-  /** Whether the sidebar renders wide content (false = 56px rail). */
+  /** The fixed sidebar renders wide content (always true). */
   wide: boolean
 }
 
 /** Owner share of an action rendered beside Settings at the sidebar foot. */
 export interface SidebarFooterActionOwnerProps {
-  /** Whether the sidebar renders wide content (false = 56px rail). */
+  /** The fixed sidebar renders wide content (always true). */
   wide: boolean
 }
 
@@ -155,8 +152,6 @@ export type SidebarRootInjected = {
    * recent Workspace, or clear into the New Session pure view when none exist.
    */
   startSession: (workspaceId?: WorkspaceId) => void
-  /** Toggle the sidebar column through the layout service. */
-  toggleSidebar: () => void
   /** Select the global panel addressed by a sidebar row. */
   selectPanel: (id: MainPanelId) => void
   /**
@@ -188,7 +183,6 @@ export type SidebarRootComponentProps =
   & PropsRenderSlots<
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
-    | 'sidebar.toggle.badge'
     | 'sidebar.panellist'
     | 'sidebar.panellist.actions'
     | 'sidebar.workspaces'

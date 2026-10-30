@@ -35,7 +35,7 @@ export function SessionLogDownloadDialog({
     : status === 'success' ? t('dialog.successTitle') : t('dialog.errorTitle')
   const description = status === 'downloading'
     ? t('dialog.preparingDescription')
-    : status === 'success' ? t('dialog.successDescription') : error ?? t('dialog.commandFailed')
+    : status === 'success' ? t(entry?.encrypted ? 'dialog.encryptedSuccessDescription' : 'dialog.successDescription') : error ?? t('dialog.commandFailed')
 
   return (
     <Modal

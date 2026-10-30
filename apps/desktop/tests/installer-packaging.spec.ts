@@ -18,6 +18,17 @@ vi.mock('node:fs/promises', async importOriginal => ({
 }))
 
 describe('installer preparation preserves application dependencies', () => {
+  it('enables the unsigned intranet feed without mandatory policy or a signing publisher', async () => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.deepseek.dsh', DSH_DESKTOP_UNSIGNED: '1',
+      DSH_DESKTOP_INTRANET_UPDATE_URL: 'http://172.28.236.3:18765/updates/win-x64/',
+    }, 'win32', 'x64')
+    expect(config.publish).toEqual([{ provider: 'generic', url: 'http://172.28.236.3:18765/updates/win-x64/', channel: 'nightly' }])
+    expect(config.win.verifyUpdateCodeSignature).toBe(false)
+    expect(config.electronLanguages).toEqual(['en', 'zh-CN'])
+    expect(config.extraMetadata).not.toHaveProperty('dshMandatoryUpdatePolicy')
+  })
   it.each(['win32', 'darwin'] as const)('rejects a missing production policy before signing on %s', async (platform) => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     expect(() => createElectronBuilderConfig({ DSH_DESKTOP_APP_ID: 'com.example.installer',
@@ -51,10 +62,10 @@ describe('installer preparation preserves application dependencies', () => {
         metadata: { value: metadata },
       })
       const appInfo = new AppInfo(metadataPackager, undefined)
-      expect(appInfo.companyName).toBe('Hangzhou DeepSeek Artificial Intelligence Co., Ltd.')
-      expect(appInfo.copyright).toBe(`Copyright © ${new Date().getFullYear()} DeepSeek Harness`)
+      expect(appInfo.companyName).toBe('HaierCash')
+      expect(appInfo.copyright).toBe(`Copyright © ${new Date().getFullYear()} Lingxi Office`)
       if (platform === 'win32') {
-        expect(expandMacro(config.nsis.uninstallDisplayName, null, appInfo, {}, false)).toBe('DeepSeek Harness')
+        expect(expandMacro(config.nsis.uninstallDisplayName, null, appInfo, {}, false)).toBe('LingXi Office')
         expect(config.nsis.installerLanguages).toEqual(readInstallerLocales().map(locale => locale.id))
       }
       const aboutIcon = config.extraResources.find(resource => resource.to === 'icon.png')
@@ -81,7 +92,7 @@ describe('installer preparation preserves application dependencies', () => {
       expect(write).toHaveBeenCalledTimes(platform === 'win32' ? 1 : 0)
       if (platform === 'win32') {
         expect(write).toHaveBeenCalledWith(expect.stringMatching(/installer-ui[\\/]strings\.nsh$/u),
-          expect.stringContaining('LangString INSTALLER_INSTALL ${LANG_JAPANESE}'), 'utf8')
+          expect.stringContaining('LangString INSTALLER_INSTALL ${LANG_SIMPCHINESE}'), 'utf8')
       }
     } finally {
       vi.unstubAllEnvs()
@@ -99,7 +110,7 @@ describe('installer preparation preserves application dependencies', () => {
       DSH_DESKTOP_TARGET_ARCH: 'x64',
       DSH_DESKTOP_UNSIGNED: '1',
     }, 'win32', 'x64')
-    expect(config.artifactName).toBe('deepseek-harness-${version}-${os}-${arch}-unsigned.${ext}')
+    expect(config.artifactName).toBe('lingxi-office-${version}-${os}-${arch}-unsigned.${ext}')
   })
 
   it('packages every preload entry point the shell loads', async () => {

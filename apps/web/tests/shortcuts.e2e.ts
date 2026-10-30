@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { chromium, type Browser } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { openSettings } from './support.ts'
+import { connectFreshWorkspace, openSettings } from './support.ts'
 import { captureStableAria, compareOrRefreshGolden, launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold } from './scaffold.ts'
 
 const expected = fileURLToPath(new URL('./expected/shortcuts', import.meta.url))
@@ -74,7 +74,7 @@ describe('web e2e: shortcut reference', () => {
       const fixedBackground = await stopRow.evaluate(element => getComputedStyle(element).backgroundColor)
       await stopRow.hover()
       expect(await stopRow.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(fixedBackground)
-      const editLabel = locale === 'zh-CN' ? '修改展开／收起左侧栏快捷键' : 'Edit shortcut for Toggle left sidebar'
+      const editLabel = locale === 'zh-CN' ? '修改展开／收起右侧栏快捷键' : 'Edit shortcut for Toggle right sidebar'
       const row = dialog.getByRole('listitem').filter({ has: page.getByRole('button', { name: editLabel, exact: true }) })
       const editButton = page.getByRole('button', { name: editLabel, exact: true })
       expect(await row.locator('[class*="rowActions"]').evaluate(element => getComputedStyle(element).opacity)).toBe('0')
@@ -113,7 +113,7 @@ describe('web e2e: shortcut reference', () => {
       expect(await row.locator('[class*="rowActions"]').evaluate(element => getComputedStyle(element).opacity)).toBe('1')
       expect(await row.getByRole('button').count()).toBe(1)
       await editButton.click()
-      const inline = dialog.getByRole('group', { name: locale === 'zh-CN' ? '展开／收起左侧栏' : 'Toggle left sidebar', exact: true })
+      const inline = dialog.getByRole('group', { name: locale === 'zh-CN' ? '展开／收起右侧栏' : 'Toggle right sidebar', exact: true })
       const recorder = inline.getByRole('button', { name: locale === 'zh-CN' ? '按下快捷键' : 'Press a shortcut', exact: true })
       expect(await inline.getByRole('button', { name: locale === 'zh-CN' ? '移除' : 'Remove', exact: true }).count()).toBe(1)
       expect(await page.getByRole('dialog').count()).toBe(2)
@@ -188,15 +188,15 @@ describe('web e2e: shortcut reference', () => {
         if (query === 'abc') await compareOrRefreshGolden(join(expected, `${locale}-empty.expected.md`),
           await captureStableAria(page, '[data-shortcut-modal="shortcuts"]', scaffold.workspaceCwd), mode)
       }
-      for (const query of [locale === 'zh-CN' ? '左侧栏' : 'toggle left', 'tgllft', 'toggle left sidebar']) {
+      for (const query of [locale === 'zh-CN' ? '右侧栏' : 'toggle right', 'tglrght', 'toggle right panel']) {
         await page.getByRole('searchbox').fill(query)
         expect(await dialog.getByRole('listitem').count()).toBe(1)
-        expect(await dialog.getByRole('listitem').textContent()).toContain(locale === 'zh-CN' ? '展开／收起左侧栏' : 'Toggle left sidebar')
+        expect(await dialog.getByRole('listitem').textContent()).toContain(locale === 'zh-CN' ? '展开／收起右侧栏' : 'Toggle right sidebar')
       }
       await page.keyboard.press(`${key}+Alt+Comma`)
       expect(await referenceNode!.evaluate(element => element.isConnected)).toBe(true)
       expect(await page.getByRole('dialog').count()).toBe(2)
-      expect(await page.getByRole('searchbox').inputValue()).toBe('toggle left sidebar')
+      expect(await page.getByRole('searchbox').inputValue()).toBe('toggle right panel')
       expect(await searchInput.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('none')
       expect(await searchSurfaceStyle()).toEqual(focusedSearchSurface)
       await page.keyboard.press(referenceKey)
@@ -313,11 +313,10 @@ describe('web e2e: shortcut reference', () => {
       expect(await settingsItem.getAttribute('aria-keyshortcuts')).toBe(key === 'Meta' ? 'Alt+Meta+,' : 'Control+Alt+,')
       await page.keyboard.press('Escape')
       await settingsItem.waitFor({ state: 'detached' })
-      const sidebar = page.getByRole('button', { name: locale === 'zh-CN' ? '收起侧边栏' : 'Collapse sidebar', exact: true })
-      expect(await sidebar.getAttribute('aria-keyshortcuts')).toBe(key === 'Meta' ? 'Alt+Meta+B' : 'Control+Alt+B')
+      expect(await page.getByRole('button', { name: /^(Collapse sidebar|收起侧边栏)$/ }).count()).toBe(0)
       await page.reload({ waitUntil: 'load' })
-      await sidebar.waitFor()
-      expect(await sidebar.getAttribute('aria-keyshortcuts')).toBe(key === 'Meta' ? 'Alt+Meta+B' : 'Control+Alt+B')
+      await trigger.waitFor()
+      expect(await page.getByRole('button', { name: /^(Open sidebar|打开侧边栏)$/ }).count()).toBe(0)
       expect(console.pageErrors).toEqual([])
       expect(console.warnings).toEqual([])
     } finally { await context.close() }
@@ -326,7 +325,7 @@ describe('web e2e: shortcut reference', () => {
   it.each([
     { platform: 'Win32', primary: 'Control', keys: 'Ctrl + Alt + N' },
     { platform: 'MacIntel', primary: 'Meta', keys: '⌥ ⇧ ⌘ F12' },
-  ])('shows the shortcut inside New Session on hover and keyboard focus at wide and narrow widths on $platform', async ({ platform, primary, keys }) => {
+  ])('shows the shortcut inside New Session on hover and keyboard focus in the fixed sidebar on $platform', async ({ platform, primary, keys }) => {
     const context = await browser.newContext({ locale: 'en-US', viewport: { width: 1440, height: 1000 } })
     try {
       await context.addInitScript((value) => { Object.defineProperty(navigator, 'platform', { value }) }, platform)
@@ -342,12 +341,8 @@ describe('web e2e: shortcut reference', () => {
       await page.keyboard.press('Escape')
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
-        for (const width of [420, 264]) {
-          const handle = (await page.locator('[data-side="sidebar"]').boundingBox())!
-          await page.mouse.move(handle.x + handle.width / 2, 240)
-          await page.mouse.down()
-          await page.mouse.move(width, 240, { steps: 10 })
-          await page.mouse.up()
+        for (const width of [1440, 1180]) {
+          await page.setViewportSize({ width, height: 1000 })
           await expect.poll(() => newSession.locator('kbd').allTextContents()).toEqual(keys.split(' '))
           const centerOffset = () => newSession.evaluate((element) => {
             const button = element.getBoundingClientRect()
@@ -383,8 +378,8 @@ describe('web e2e: shortcut reference', () => {
   })
 
   it.each([
-    { platform: 'Win32', modifier: 'Control', defaultBinding: 'Control+Alt+B' },
-    { platform: 'MacIntel', modifier: 'Meta', defaultBinding: 'Alt+Meta+B' },
+    { platform: 'Win32', modifier: 'Control', defaultBinding: 'Control+Shift+B' },
+    { platform: 'MacIntel', modifier: 'Meta', defaultBinding: 'Shift+Meta+B' },
     { platform: 'Linux x86_64', modifier: 'Control', defaultBinding: null },
   ])('records, rejects conflicts, persists across reload, and synchronizes stale drafts between tabs on $platform', async ({ platform, modifier, defaultBinding }) => {
     const context = await browser.newContext({ locale: 'en-US', viewport: { width: 1440, height: 1000 } })
@@ -393,14 +388,15 @@ describe('web e2e: shortcut reference', () => {
       const page = await context.newPage()
       await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
       await page.getByRole('button', { name: 'Account menu', exact: true }).waitFor()
+      await connectFreshWorkspace(page, scaffold.workspaceCwd)
       const referenceKey = `${modifier}+Slash`
       const open = async () => {
         await page.keyboard.press(referenceKey)
         await page.getByRole('dialog', { name: 'Keyboard shortcuts', exact: true }).waitFor()
       }
       await open()
-      await page.getByRole('button', { name: 'Edit shortcut for Toggle left sidebar', exact: true }).click()
-      const editor = page.getByRole('group', { name: 'Toggle left sidebar', exact: true })
+      await page.getByRole('button', { name: 'Edit shortcut for Toggle right sidebar', exact: true }).click()
+      const editor = page.getByRole('group', { name: 'Toggle right sidebar', exact: true })
       await editor.getByRole('button', { name: 'Press a shortcut', exact: true }).focus()
       await page.keyboard.press(referenceKey)
       await page.getByRole('alert').filter({ hasText: 'Already used by “Open keyboard shortcuts”' }).waitFor()
@@ -409,29 +405,30 @@ describe('web e2e: shortcut reference', () => {
       await editor.waitFor({ state: 'hidden' })
       await page.keyboard.press('Escape')
       const sidebarKey = `${modifier}+Shift+.`
-      expect(await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).getAttribute('aria-keyshortcuts'))
+      const expand = page.locator('[data-sidebar-right-expand]')
+      expect(await expand.getAttribute('aria-keyshortcuts'))
         .toBe(modifier === 'Meta' ? 'Shift+Meta+.' : 'Control+Shift+.')
       await page.keyboard.press(sidebarKey)
-      await page.getByRole('button', { name: 'Open sidebar', exact: true }).waitFor()
+      await page.locator('[data-sidebar-right-panel][data-sidebar-right-open]').waitFor()
       await page.reload({ waitUntil: 'load' })
       await page.getByRole('button', { name: 'Account menu', exact: true }).waitFor()
-      const toggleAfterReload = page.getByRole('button', { name: /^(Open|Collapse) sidebar$/ })
+      const toggleAfterReload = page.locator('[data-sidebar-right-toggle], [data-sidebar-right-expand]').filter({ visible: true })
       await expect.poll(() => toggleAfterReload.getAttribute('aria-keyshortcuts'))
         .toBe(modifier === 'Meta' ? 'Shift+Meta+.' : 'Control+Shift+.')
-      const wasOpen = await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).isVisible()
+      const panel = page.locator('[data-sidebar-right-panel]')
+      const wasOpen = await panel.getAttribute('data-sidebar-right-open') !== null
       await page.keyboard.press(sidebarKey)
-      await page.getByRole('button', { name: wasOpen ? 'Open sidebar' : 'Collapse sidebar', exact: true }).waitFor()
-      // The rail toggle moves during collapse; reopen with the binding this case exercises.
-      if (wasOpen) await page.keyboard.press(sidebarKey)
-      await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).waitFor()
+      await expect.poll(() => panel.getAttribute('data-sidebar-right-open')).toBe(wasOpen ? null : '')
+      if (!wasOpen) await page.keyboard.press(sidebarKey)
+      await expand.waitFor()
       await open()
-      await page.getByRole('button', { name: 'Edit shortcut for Toggle left sidebar', exact: true }).click()
+      await page.getByRole('button', { name: 'Edit shortcut for Toggle right sidebar', exact: true }).click()
       await editor.getByRole('button', { name: 'Press a shortcut', exact: true }).focus()
       const other = await context.newPage()
       await other.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
       await other.getByRole('button', { name: 'Account menu', exact: true }).waitFor()
       await other.keyboard.press(referenceKey)
-      await other.getByRole('button', { name: 'Edit shortcut for Toggle left sidebar', exact: true }).click()
+      await other.getByRole('button', { name: 'Edit shortcut for Toggle right sidebar', exact: true }).click()
       await other.getByRole('button', { name: 'Remove', exact: true }).click()
       await editor.getByText('Shortcut configuration or available commands changed. Review the latest bindings before saving.', { exact: true }).waitFor()
       await page.bringToFront()
@@ -443,11 +440,11 @@ describe('web e2e: shortcut reference', () => {
       await editor.getByRole('button', { name: 'I have reviewed the latest configuration', exact: true }).click()
       await editor.getByRole('button', { name: 'Retry save', exact: true }).click()
       await editor.waitFor({ state: 'hidden' })
-      await page.getByRole('button', { name: 'Edit shortcut for Toggle left sidebar', exact: true }).click()
+      await page.getByRole('button', { name: 'Edit shortcut for Toggle right sidebar', exact: true }).click()
       await editor.getByRole('button', { name: 'Restore default', exact: true }).click()
       await editor.waitFor({ state: 'hidden' })
       await page.keyboard.press('Escape')
-      expect(await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).getAttribute('aria-keyshortcuts'))
+      expect(await page.locator('[data-sidebar-right-expand]').getAttribute('aria-keyshortcuts'))
         .toBe(defaultBinding)
       const stored = await page.evaluate((): unknown => JSON.parse(localStorage.getItem('dsh.keybindings.v1')!))
       const profile = platform === 'MacIntel' ? 'macos' : platform === 'Win32' ? 'windows' : 'linux'

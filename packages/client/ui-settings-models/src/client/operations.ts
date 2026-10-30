@@ -76,6 +76,10 @@ export interface ModelsOperations {
 export function createModelsOperations(ctx: ClientContext): ModelsOperations {
   return {
     storeCredential: async (ref, value) => {
+      if (ref === 'COMPANY_GATEWAY_API_KEY') {
+        const response = await ctx.remote.account.completeApiKeySignIn(value)
+        return response.ok ? undefined : response.error.message
+      }
       const response = await ctx.remote.credentials.set(ref, value)
       return response.ok ? undefined : response.error.message
     },

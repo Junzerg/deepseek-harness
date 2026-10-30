@@ -22,7 +22,7 @@ describe('package text resolution', () => {
 
   it('resolves each field in the current locale without registering map languages', () => {
     const { locale } = make()
-    const title = { en: 'Tools', zh: '工具', ja: 'ツール' }
+    const title = { en: 'Tools', zh: '工具' }
     locale.setLocale('zh')
     const snapshot = locale.getSnapshot()
 

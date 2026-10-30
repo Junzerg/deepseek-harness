@@ -1,6 +1,7 @@
 /** Resolve the Desktop auto-update channel and its Tencent COS destination. */
 
 import { valid } from 'semver'
+import { resolveIntranetUpdateUrl } from './intranet-update-environment.mjs'
 
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV = 'DSH_DESKTOP_AUTO_UPDATE_ENV'
@@ -133,7 +134,7 @@ function httpsOrigin(value, name) {
 }
 
 /**
- * Resolve the public updater URL and object prefixes for one release target.
+ * Resolve an explicit intranet feed or the deployment's updater URL and object prefixes.
  * @param {NodeJS.ProcessEnv} env - Packaging or upload environment.
  * @param {NodeJS.Platform} platform - Target Node.js platform.
  * @param {string} arch - Target Node.js architecture.
@@ -141,6 +142,17 @@ function httpsOrigin(value, name) {
  * @throws {Error} When the test deployment lacks a valid HTTPS origin or a 32-character lowercase hexadecimal release ID.
  */
 export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
+  const intranet = resolveIntranetUpdateUrl(env)
+  if (intranet !== undefined) {
+    if (platform !== 'win32' || arch !== 'x64') throw new Error('desktop package: intranet updates require Windows x64')
+    const url = new URL(intranet)
+    return {
+      environment: 'test', channel: resolveDesktopUpdateChannel(env), target: 'win-x64',
+      origin: url.origin, publicUrl: intranet,
+      keyPrefix: url.pathname.replace(/^\//u, '').replace(/\/$/u, ''),
+      binaryKeyPrefix: url.pathname.replace(/^\//u, '').replace(/\/$/u, ''),
+    }
+  }
   const channel = resolveDesktopUpdateChannel(env)
   const environment = resolveDesktopAutoUpdateEnvironment(env)
   const target = resolveDesktopAutoUpdateTarget(platform, arch)
@@ -180,6 +192,7 @@ export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
  * @throws {Error} When the selected deployment lacks a bucket or valid updater configuration.
  */
 export function resolveDesktopUploadConfig(env, platform, arch) {
+  if (resolveIntranetUpdateUrl(env) !== undefined) throw new Error('desktop upload: copy intranet artifacts to the internal server; COS upload is unavailable')
   const update = resolveDesktopAutoUpdateConfig(env, platform, arch)
   const deployment = UPDATE_ENVIRONMENTS[update.environment]
   return {

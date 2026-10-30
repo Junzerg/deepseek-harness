@@ -1,0 +1,4 @@
+# This scenario opts into the native API-key provider, independently of the company default.
+- id: llm-pi-ai
+  config:
+    providers: {}

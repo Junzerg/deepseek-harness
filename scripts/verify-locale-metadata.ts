@@ -3,7 +3,7 @@ import { existsSync, globSync, readFileSync } from 'node:fs'
 import { basename, posix, join, resolve } from 'node:path'
 import { detailPath } from '../packages/util/plugin-detail/src/document.ts'
 import { PRODUCT_PACKAGE_POLICY } from './product-package-policy.ts'
-import { SHIPPED_LOCALE_IDS, localeTokens, hasInvisibleLocaleCharacters } from './shipped-locales.ts'
+import { SHIPPED_LOCALE_IDS, hasInvisibleLocaleCharacters } from './shipped-locales.ts'
 import { collectConfigCatalog } from './gen-config-catalog.ts'
 
 /** Flatten metadata strings and reject values that cannot be translated. */
@@ -47,25 +47,9 @@ export function localeMetadataProblems(root: string): string[] {
         return dictionary
       }
       const en = read('en')
-      const zh = existsSync(join(root, directory, 'zh.json')) ? read('zh') : {}
+      if (existsSync(join(root, directory, 'zh.json'))) read('zh')
       const description = en['meta.description']
       if (description !== undefined && !/[.!?]$/u.test(description)) problems.push(`${directory}/en.json: meta.description must end with sentence punctuation`)
-      const expected = { ...zh, ...en }
-      for (const language of SHIPPED_LOCALE_IDS.filter(id => id !== 'en' && id !== 'zh')) {
-        const translated = read(language)
-        for (const key of new Set([...Object.keys(expected), ...Object.keys(translated)])) {
-          if (translated[key] === undefined) problems.push(`${directory}/${language}.json: missing ${key}`)
-          else if (expected[key] === undefined) problems.push(`${directory}/${language}.json: unexpected ${key}`)
-          else {
-            if (language !== 'ja' && key === 'meta.description' && ((zh[key] !== undefined && /\p{Script=Han}/u.test(zh[key]) && translated[key] === zh[key])
-              || (en[key] !== undefined && translated[key] === en[key]))) {
-              problems.push(`${directory}/${language}.json: ${key} contains untranslated source text`)
-            }
-            const placeholders = (text: string): string => localeTokens(text).join(',')
-            if (placeholders(translated[key]) !== placeholders(expected[key])) problems.push(`${directory}/${language}.json: ${key} changes placeholders or literal tokens`)
-          }
-        }
-      }
     } catch (error) {
       problems.push(`${directory}: ${error instanceof Error ? error.message : String(error)}`)
     }

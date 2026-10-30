@@ -9,8 +9,8 @@
 // the endpoint, a declared route's own name and protocol, and the reasoning
 // levels of its models — as merge patches against the stored profile. Zero
 // model calls: configuration is pure settings/credentials/llm-domain traffic,
-// so there is no fixture and a stray stream would fail loud because the
-// adapter registry is empty. The provider under test is
+// so there is no fixture; the scaffold's selected route rejects streaming.
+// The provider under test is
 // minimax-cn so a developer's real ANTHROPIC/OPENAI environment keys can
 // never shadow the derived reference. The deletion dialog distinguishes a
 // reference-free profile from a page-managed key before the credential and
@@ -107,8 +107,9 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
     await dialog.waitFor({ timeout: 10_000 })
     await dialog.getByRole('button', { name: '模型', exact: true }).click()
     await dialog.getByText('填入各提供商的 API 密钥即可使用其模型。').waitFor({ timeout: 10_000 })
-    // The dormant pi-ai adapter contributes its whole installed catalog; no
-    // provider is configured yet, so the page is one add button.
+    // The shipped company route coexists with the installed catalog: adding
+    // an unrelated provider must leave its configuration intact.
+    await dialog.getByRole('button', { name: '编辑 HaierCash (company-gateway)', exact: true }).waitFor()
     const add = dialog.getByRole('button', { name: '添加模型提供商' })
     await add.waitFor({ timeout: 10_000 })
     // The button enables once the dormant catalog lands in the join.
@@ -139,7 +140,7 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
   it('refuses a key no HTTP header can carry before anything is written', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-models-illegal-key'))
     const dialog = page.getByRole('dialog', { name: '设置' })
-    const key = dialog.getByLabel('API 密钥')
+    const key = dialog.getByLabel('API 密钥', { exact: true })
     const save = dialog.getByRole('button', { name: '保存', exact: true })
 
     // A key no HTTP header can carry would save cleanly and fail the first
@@ -168,8 +169,10 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
     const row = dialog.getByText('minimax-cn', { exact: true }).first()
     await row.waitFor({ timeout: 10_000 })
     await dialog.getByText('已保存 minimax-cn。', { exact: true }).waitFor({ timeout: 10_000 })
-    expect(await dialog.getByRole('img', { name: 'API 密钥已配置' }).count()).toBe(0)
-    expect(await dialog.getByRole('img', { name: 'API 密钥缺失' }).count()).toBe(0)
+    const card = dialog.locator('li').filter({ has: page.getByRole('button', { name: '编辑 minimax-cn', exact: true }) })
+    expect(await card.count()).toBe(1)
+    expect(await card.getByRole('img', { name: 'API 密钥已配置' }).count()).toBe(0)
+    expect(await card.getByRole('img', { name: 'API 密钥缺失' }).count()).toBe(0)
     const document = await readFile(join(scaffold.harnessHome, 'profiles', 'scaffold', 'cordis.patch.yml'), 'utf8')
     expect(document).toContain('minimax-cn: {}')
     expect(document).not.toContain('MINIMAX_CN_API_KEY')

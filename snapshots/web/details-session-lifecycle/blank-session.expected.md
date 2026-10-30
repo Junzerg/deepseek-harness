@@ -3,7 +3,7 @@
 - No selected Session: expand control absent
 - Selected workspace before first message: expand control visible
 - Files: before-chat.md opens as a Markdown preview
-- Narrow viewport: reopened preview fills the viewport
+- Narrow viewport: reopened preview overlays the main column at 336px
 - Terminal: writes a file in the selected workspace before any user message or turn
 
 ```json

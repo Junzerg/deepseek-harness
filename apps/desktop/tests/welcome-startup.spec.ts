@@ -275,6 +275,8 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   state.hasApiKey = false
   state.accountListener!({ ...account, status: 'credential-stored', attempt: null })
   state.accountListener!({ ...account, status: 'signed-out', attempt: null })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(state.beforeWelcome).toHaveBeenCalledTimes(welcomeCount)
   state.expiryListener!()
   await vi.waitFor(() => { expect(state.beforeWelcome).toHaveBeenCalledTimes(welcomeCount + 1) })
   expect(await state.operations!.takeNotice()).toBe('session-expired')

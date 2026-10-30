@@ -48,7 +48,6 @@ function harness() {
   })
   const pin = vi.fn<(address: string, signal: AbortSignal) => void>()
   const { controller, adopt, show, measure } = createSidebarRightController(tabs, pin, {
-    autoFullscreen: () => false,
     openWithFocus: (_sessionId, open) => { open() },
     closeWithFocus: (_sessionId, _paneId, close) => { close() },
   })

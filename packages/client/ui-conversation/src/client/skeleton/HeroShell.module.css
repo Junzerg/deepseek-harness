@@ -84,9 +84,7 @@
   justify-content: center;
 }
 
-/* The swim morph's curves poke slightly past the viewBox edges, so clipping
-   would slice the tail mid-wag. The hero mark stays in the same primary ink
-   as its headline. */
+/* Brand occupants share the headline alignment and hover transform. */
 .fish {
   display: block;
   overflow: visible;
@@ -94,10 +92,7 @@
   color: var(--dsw-alias-label-primary);
 }
 
-/* Hover swim: a slow continuous sway about the body center — the head
-   (left) lifts as the whale rises, then settles back with a small
-   counter-tilt, like treading water. Negative rotation = head up (the head
-   is the left half; origin 50% 60%). */
+/* A small hover sway keeps the brand centered beside the title. */
 @keyframes hero-fish-swim {
   0%,
   100% {

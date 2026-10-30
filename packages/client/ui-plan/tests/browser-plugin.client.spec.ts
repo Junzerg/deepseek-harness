@@ -110,7 +110,6 @@ describe('ui-plan browser apply', () => {
     b.registerType.mockImplementation(definition => tabs.register(definition))
     const store = createSidebarRightStore(() => ({ kind: 'guide', title: 'Guide' })).create()
     const { controller, adopt, show } = createSidebarRightController(tabs, vi.fn(), {
-      autoFullscreen: () => false,
       openWithFocus: (_sessionId, open) => { open() },
       closeWithFocus: (_sessionId, _paneId, close) => { close() },
     })

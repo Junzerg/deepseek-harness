@@ -9,17 +9,17 @@
     1000
   ],
   "columns": [
-    280,
-    644,
-    756
+    236,
+    1108,
+    336
   ],
-  "columnTransition": "all",
+  "columnTransition": "none",
   "expanded": true,
   "mode": "push",
-  "panelContentWidth": 756,
-  "panelOuterWidth": 756,
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
   "coversViewport": false,
-  "resizeHandleWidth": 8,
+  "resizeHandleWidth": 0,
   "expandedDirectories": [],
   "panes": [
     {
@@ -57,9 +57,9 @@
     1000
   ],
   "columns": [
-    280,
-    644,
-    756
+    236,
+    1108,
+    336
   ],
   "columnTransition": "none",
   "expanded": true,
@@ -105,8 +105,8 @@
     1000
   ],
   "columns": [
-    280,
-    1400,
+    236,
+    1444,
     0
   ],
   "columnTransition": "none",
@@ -153,11 +153,11 @@
     1000
   ],
   "columns": [
-    280,
-    1400,
+    236,
+    1444,
     0
   ],
-  "columnTransition": "all",
+  "columnTransition": "grid-template-columns",
   "expanded": false,
   "mode": "push",
   "panelContentWidth": 0,
@@ -190,9 +190,9 @@
     1000
   ],
   "columns": [
-    280,
-    644,
-    756
+    236,
+    1108,
+    336
   ],
   "columnTransition": "none",
   "expanded": true,
@@ -238,17 +238,17 @@
     1000
   ],
   "columns": [
-    280,
-    644,
-    756
+    236,
+    1108,
+    336
   ],
-  "columnTransition": "all",
+  "columnTransition": "grid-template-columns",
   "expanded": true,
   "mode": "push",
-  "panelContentWidth": 756,
-  "panelOuterWidth": 756,
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
   "coversViewport": false,
-  "resizeHandleWidth": 8,
+  "resizeHandleWidth": 0,
   "expandedDirectories": [],
   "panes": [
     {
@@ -273,17 +273,17 @@
     1000
   ],
   "columns": [
-    280,
-    644,
-    756
+    236,
+    1108,
+    336
   ],
-  "columnTransition": "all",
+  "columnTransition": "grid-template-columns",
   "expanded": true,
   "mode": "push",
-  "panelContentWidth": 756,
-  "panelOuterWidth": 756,
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
   "coversViewport": false,
-  "resizeHandleWidth": 8,
+  "resizeHandleWidth": 0,
   "expandedDirectories": [],
   "panes": [
     {
@@ -312,7 +312,103 @@
 }
 ```
 
-## A capacity-closed: wide left preference protected
+## A fixed panel at 1181px
+
+```json
+{
+  "viewport": [
+    1181,
+    1000
+  ],
+  "columns": [
+    236,
+    609,
+    336
+  ],
+  "columnTransition": "grid-template-columns",
+  "expanded": true,
+  "mode": "push",
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
+  "coversViewport": false,
+  "resizeHandleWidth": 0,
+  "expandedDirectories": [],
+  "panes": [
+    {
+      "active": true,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        },
+        {
+          "title": "Start",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "active": false,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+## A fixed panel at 1180px
+
+```json
+{
+  "viewport": [
+    1180,
+    1000
+  ],
+  "columns": [
+    236,
+    944,
+    0
+  ],
+  "columnTransition": "grid-template-columns",
+  "expanded": true,
+  "mode": "push",
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
+  "coversViewport": false,
+  "resizeHandleWidth": 0,
+  "expandedDirectories": [],
+  "panes": [
+    {
+      "active": true,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        },
+        {
+          "title": "Start",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "active": false,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+## A fixed panel at 1024px
 
 ```json
 {
@@ -321,15 +417,15 @@
     1000
   ],
   "columns": [
-    420,
-    604,
+    236,
+    788,
     0
   ],
-  "columnTransition": "all",
-  "expanded": false,
+  "columnTransition": "grid-template-columns",
+  "expanded": true,
   "mode": "push",
-  "panelContentWidth": 0,
-  "panelOuterWidth": 0,
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
   "coversViewport": false,
   "resizeHandleWidth": 0,
   "expandedDirectories": [],
@@ -360,55 +456,7 @@
 }
 ```
 
-## A widened: remains closed
-
-```json
-{
-  "viewport": [
-    1680,
-    1000
-  ],
-  "columns": [
-    420,
-    1260,
-    0
-  ],
-  "columnTransition": "all",
-  "expanded": false,
-  "mode": "push",
-  "panelContentWidth": 0,
-  "panelOuterWidth": 0,
-  "coversViewport": false,
-  "resizeHandleWidth": 0,
-  "expandedDirectories": [],
-  "panes": [
-    {
-      "active": true,
-      "tabs": [
-        {
-          "title": "Files",
-          "selected": true
-        },
-        {
-          "title": "Start",
-          "selected": false
-        }
-      ]
-    },
-    {
-      "active": false,
-      "tabs": [
-        {
-          "title": "Files",
-          "selected": true
-        }
-      ]
-    }
-  ]
-}
-```
-
-## A automatic fullscreen at 767px
+## A fixed panel at 767px
 
 ```json
 {
@@ -417,16 +465,16 @@
     1000
   ],
   "columns": [
-    56,
-    711,
+    236,
+    531,
     0
   ],
-  "columnTransition": "none",
+  "columnTransition": "grid-template-columns",
   "expanded": true,
-  "mode": "fullscreen",
-  "panelContentWidth": 767,
-  "panelOuterWidth": 767,
-  "coversViewport": true,
+  "mode": "push",
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
+  "coversViewport": false,
   "resizeHandleWidth": 0,
   "expandedDirectories": [],
   "panes": [
@@ -456,7 +504,55 @@
 }
 ```
 
-## A automatic fullscreen exited: widening does not reopen
+## A fixed panel at 390px
+
+```json
+{
+  "viewport": [
+    390,
+    1000
+  ],
+  "columns": [
+    236,
+    154,
+    0
+  ],
+  "columnTransition": "grid-template-columns",
+  "expanded": true,
+  "mode": "push",
+  "panelContentWidth": 336,
+  "panelOuterWidth": 336,
+  "coversViewport": false,
+  "resizeHandleWidth": 0,
+  "expandedDirectories": [],
+  "panes": [
+    {
+      "active": true,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        },
+        {
+          "title": "Start",
+          "selected": false
+        }
+      ]
+    },
+    {
+      "active": false,
+      "tabs": [
+        {
+          "title": "Files",
+          "selected": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+## A closed: widening preserves the closed state
 
 ```json
 {
@@ -465,11 +561,11 @@
     1000
   ],
   "columns": [
-    420,
-    1260,
+    236,
+    1444,
     0
   ],
-  "columnTransition": "all",
+  "columnTransition": "grid-template-columns",
   "expanded": false,
   "mode": "push",
   "panelContentWidth": 0,

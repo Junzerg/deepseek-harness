@@ -35,6 +35,6 @@
   - button "Queue"
   - text: Performance & usage Choose how much performance and usage information to show
   - button "Detailed"
-  - text: Upload Session Log when using the official model API Help improve DeepSeek models and products.
+  - text: Upload Session Log when using the official model API Session logs are sent to the model service provider.
   - switch "Upload Session Log when using the official model API"
   - text: "Current version: {{version}}"

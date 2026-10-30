@@ -69,7 +69,7 @@ export function desktopUpdateMetadataFilename(
  * @param env - Packaging or upload environment.
  * @param platform - Target Node.js platform.
  * @param arch - Target Node.js architecture.
- * @returns Resolved updater configuration.
+ * @returns Explicit intranet feed or deployment updater configuration.
  * @throws When the test deployment lacks a valid HTTPS origin or a 32-character lowercase hexadecimal release ID.
  */
 export function resolveDesktopAutoUpdateConfig(

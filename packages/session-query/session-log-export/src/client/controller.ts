@@ -12,6 +12,8 @@ export interface SessionLogDownloadEntry {
   readonly open: boolean
   readonly status: SessionLogDownloadStatus
   readonly error: string | null
+  /** Set after the Host confirms an administrator-encrypted export. */
+  readonly encrypted?: boolean
 }
 
 /** Download states keyed by the Session whose Header owns the dialog. */
@@ -31,7 +33,7 @@ const INITIAL: SessionLogDownloadState = { bySession: {} }
  * @returns one safe browser download filename.
  */
 export function sessionLogZipFilename(sessionId: SessionId): string {
-  return `dsh-session-${String(sessionId).replace(/[^A-Za-z0-9_-]/g, '_')}.zip`
+  return `lxo-session-${String(sessionId).replace(/[^A-Za-z0-9_-]/g, '_')}.zip`
 }
 
 /**
@@ -116,9 +118,10 @@ export class SessionLogDownloadController {
         const detail = await response.text().catch(() => '')
         throw new Error(`Export failed: HTTP ${response.status}${detail === '' ? '' : ` ${detail}`}`)
       }
-      this.save(route, sessionLogZipFilename(sessionId))
+      const suffix = response.headers.get('x-lxo-archive-format') === 'age' ? '.age' : ''
+      this.save(route, `${sessionLogZipFilename(sessionId)}${suffix}`)
       const open = this.store.getSnapshot().bySession[String(sessionId)]?.open ?? true
-      this.publish(sessionId, { open, status: 'success', error: null })
+      this.publish(sessionId, { open, status: 'success', error: null, ...suffix === '' ? {} : { encrypted: true } })
     } catch (error: unknown) {
       if (signal.aborted) return
       const open = this.store.getSnapshot().bySession[String(sessionId)]?.open ?? true

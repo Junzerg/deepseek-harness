@@ -30,6 +30,10 @@ ManifestDPIAware true
 !macroend
 
 !macro customInit
+  ; Older clients pass /S during updates; keep extraction progress visible for those clients too.
+  ${If} ${isUpdated}
+    SetSilent normal
+  ${EndIf}
   ${If} ${isForAllUsers}
     MessageBox MB_OK|MB_ICONEXCLAMATION "$(INSTALLER_PER_USER)" /SD IDOK
     SetErrorLevel 2

@@ -24,18 +24,19 @@ const themeOf = (colorScheme: 'light' | 'dark'): ThemeSnapshot => ({
   active: { id: colorScheme, colorScheme, tokens: {} }, themes: [], revision: 0,
 })
 
-function operationsOf(state: Omit<AccountView, 'links'>, details?: Partial<AccountDetails>, pages?: PlatformPages,
+function operationsOf(state: Omit<AccountView, 'links'> & { platformAvailable?: boolean }, details?: Partial<AccountDetails>, pages?: PlatformPages,
   avatar?: AccountAvatarSnapshot): AccountSectionInjected {
   return {
     ...pages === undefined ? {} : { openPlatformPage: pages.open },
     hooks: {
       account: {
-        getSnapshot: () => ({ view: { ...state, links: { usageUrl: 'http://localhost:8081/usage', topUpUrl: 'http://localhost:8081/top_up' } }, details, avatar, failed: false }),
+        getSnapshot: () => ({ platformAvailable: state.platformAvailable !== false, view: { ...state, links: { usageUrl: 'http://localhost:8081/usage', topUpUrl: 'http://localhost:8081/top_up' } }, details, avatar, failed: false }),
         subscribe: () => () => {},
       },
       theme: { getSnapshot: () => themeOf('light'), subscribe: () => () => {} },
     },
     hasRunningAccountTasks: vi.fn(async () => false),
+    feedbackDestination: 'questionnaire',
     contactUs: vi.fn(), showLogin: vi.fn(), setOnboarding: vi.fn(),
     bonusNoticeShown: vi.fn(), bonusNoticeDismissed: vi.fn(),
     refreshAccount: vi.fn(() => Promise.resolve()),
@@ -44,7 +45,7 @@ function operationsOf(state: Omit<AccountView, 'links'>, details?: Partial<Accou
   }
 }
 
-function mount(state: Omit<AccountView, 'links'>, copy: typeof en | typeof zh = en, details?: Partial<AccountDetails>,
+function mount(state: Omit<AccountView, 'links'> & { platformAvailable?: boolean }, copy: typeof en | typeof zh = en, details?: Partial<AccountDetails>,
   platform?: PlatformBridge, avatar?: AccountAvatarSnapshot) {
   const pages = platform === undefined ? undefined : createPlatformPages()
   const operations = operationsOf(state, details, pages, avatar)
@@ -100,6 +101,27 @@ async function accountMenu(operations: AccountSectionInjected, snapshot: () => A
     useTheme={selector => selector(operations.hooks.theme.getSnapshot())}
     openOnboarding={() => {}} openSettings={() => {}} t={key => en[key as AccountKey]} />
 }
+
+it.each([en, zh])('keeps notifications inert and reuses the footer Settings and Feedback actions', async (copy) => {
+  const { AccountMenu } = await import('../src/client/AccountMenu.tsx')
+  const operations = operationsOf({ status: 'signed-out', attempt: null })
+  const openSettings = vi.fn()
+  const view = render(<AccountMenu {...({} as GlobalStandardProps)} {...operations} settingsOpen={false}
+    useAccount={selector => selector(operations.hooks.account.getSnapshot())}
+    useTheme={selector => selector(operations.hooks.theme.getSnapshot())} wide openOnboarding={() => {}} openSettings={openSettings}
+    t={key => key in copy ? copy[key as AccountKey] : key} />)
+  expect(within(view.container).getAllByRole('button').map(button => button.getAttribute('aria-label')))
+    .toEqual([copy.menu, copy.notifications, copy.contactUs, copy.settings])
+  fireEvent.click(screen.getByRole('button', { name: copy.notifications }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.queryByRole('menu')).toBeNull()
+  expect(openSettings).not.toHaveBeenCalled()
+  expect(operations.contactUs).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: copy.settings }))
+  expect(openSettings).toHaveBeenCalledOnce()
+  fireEvent.click(screen.getByRole('button', { name: copy.contactUs }))
+  expect(operations.contactUs).toHaveBeenCalledOnce()
+})
 
 it.each([en, zh])('renders account cards without inventing profile or balance data', async (copy) => {
   mount({ status: 'credential-stored', attempt: null }, copy)
@@ -189,7 +211,7 @@ it.each([en, zh])('offers settings, contact and sign-in from the signed-out acco
     useTheme={selector => selector(operations.hooks.theme.getSnapshot())} wide openOnboarding={() => {}} openSettings={openSettings}
     t={key => key in copy ? copy[key as AccountKey] : key} />)
   const trigger = screen.getByRole('button', { name: copy.menu })
-  expect(trigger.textContent).toBe(copy.more)
+  expect(trigger.textContent).toBe('')
   expect(trigger.querySelector('svg')).not.toBeNull()
   fireEvent.click(trigger)
   expect(screen.getAllByRole('menuitem').map(item => item.textContent)).toEqual([copy.settings, copy.contactUs, copy.signIn])
@@ -199,6 +221,25 @@ it.each([en, zh])('offers settings, contact and sign-in from the signed-out acco
   fireEvent.click(screen.getByRole('button', { name: copy.menu }))
   fireEvent.click(screen.getByRole('menuitem', { name: copy.contactUs }))
   expect(operations.contactUs).toHaveBeenCalledOnce()
+})
+
+it.each([en, zh])('shows the internal feedback contact without opening the questionnaire', async (copy) => {
+  const operations = operationsOf({ status: 'signed-out', attempt: null })
+  operations.feedbackDestination = 'internal-team'
+  const { AccountMenu } = await import('../src/client/AccountMenu.tsx')
+  render(<AccountMenu {...({} as GlobalStandardProps)} {...operations} settingsOpen={false}
+    useAccount={selector => selector(operations.hooks.account.getSnapshot())}
+    useTheme={selector => selector(operations.hooks.theme.getSnapshot())} wide openOnboarding={() => {}} openSettings={() => {}}
+    t={key => key in copy ? copy[key as AccountKey] : key} />)
+
+  fireEvent.click(screen.getByRole('button', { name: copy.menu }))
+  fireEvent.click(screen.getByRole('menuitem', { name: copy.contactUs }))
+
+  expect(operations.contactUs).not.toHaveBeenCalled()
+  const dialog = screen.getByRole('dialog', { name: copy.contactUs })
+  expect(within(dialog).getByText(copy.contactInternalDescription)).toBeTruthy()
+  fireEvent.click(within(dialog).getAllByRole('button', { name: copy.close }).at(-1)!)
+  expect(screen.queryByRole('dialog', { name: copy.contactUs })).toBeNull()
 })
 
 it('reports a failed start in the login dialog, not as a sidebar alert', async () => {
@@ -388,11 +429,13 @@ it.each(['usage', 'top-up'] as const)('shows an accessible spinner until %s fini
 
 
 it.each([
-  ['Preferred name', '138****0000', 'Preferred name'],
-  [null, '138****0000', '138****0000'],
-  [null, 'u***@example.com', 'u***@example.com'],
-  [null, null, en.signedIn],
-])('uses the sidebar profile label %s / %s', async (name, contact, expected) => {
+  ['Preferred name', '138****0000', 'P'],
+  ['李明', null, '李'],
+  ['  junzerg  ', null, 'j'],
+  [null, '138****0000', '1'],
+  [null, 'u***@example.com', 'u'],
+  [null, null, ''],
+])('uses the login name initial in the sidebar for %s / %s', async (name, contact, expected) => {
   const operations = mount({ status: 'credential-stored', attempt: null }, en, {
     profile: { status: 'ready', value: { id: null, name, contact } },
   })
@@ -405,7 +448,7 @@ it.each([
   expect(screen.getByRole('button', { name: en.menu }).textContent).toBe(expected)
 })
 
-it('shows the same shared picture outcome in settings and the sidebar', async () => {
+it('keeps the profile picture in settings and uses the login initial in the sidebar', async () => {
   const avatar: AccountAvatarSnapshot = { status: 'ready', url: 'https://example.test/avatar.png' }
   const operations = mount({ status: 'credential-stored', attempt: null }, en, {
     profile: { status: 'ready', value: { id: null, name: 'User', contact: null, avatarUrl: 'https://example.test/avatar.png' } },
@@ -416,10 +459,11 @@ it('shows the same shared picture outcome in settings and the sidebar', async ()
     useTheme={selector => selector(operations.hooks.theme.getSnapshot())}
     wide openSettings={() => {}} openOnboarding={() => {}} t={key => en[key as AccountKey]} />)
   const images = document.querySelectorAll('img')
-  expect(images).toHaveLength(2)
+  expect(images).toHaveLength(1)
+  expect(screen.getByRole('button', { name: en.menu }).textContent).toBe('U')
   for (const image of images) expect(image.getAttribute('src')).toBe('https://example.test/avatar.png')
   for (const image of images) fireEvent.error(image)
-  expect(operations.avatarFailed).toHaveBeenCalledTimes(2)
+  expect(operations.avatarFailed).toHaveBeenCalledTimes(1)
   expect(operations.avatarFailed).toHaveBeenCalledWith(avatar)
 })
 
@@ -729,4 +773,13 @@ it.each(['desktopOnboardingVisible', 'onboarding'] as const)('defers bonus displ
   reopened.rerender(await accountMenu(operations, () => snapshot, false))
   await vi.waitFor(() => { expect(operations.bonusNoticeShown).toHaveBeenCalledExactlyOnceWith(notice.orderId) })
   expect(screen.getByText(notice.message)).toBeTruthy()
+})
+
+it('hides unsupported company wallet and Platform entries while retaining account identity', () => {
+  mount({ status: 'credential-stored', attempt: null, platformAvailable: false }, zh,
+    { profile: { status: 'ready', value: { id: null, name: 'Employee', contact: 'employee@example.test' } } })
+  expect(screen.getByText('Employee')).toBeTruthy()
+  for (const label of [zh.balance, zh.bonusBalance, zh.topUp, zh.usage, zh.accountInfo]) {
+    expect(screen.queryByText(label)).toBeNull()
+  }
 })

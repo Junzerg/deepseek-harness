@@ -10,7 +10,7 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
  * the snapshots pin the shell chrome itself.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, waitFor } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import { SlotTestRuntime, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
@@ -41,7 +41,7 @@ afterEach(() => {
 async function bench(options: { locale?: 'en' } = {}) {
   const runtime = await SlotTestRuntime.create()
   runtime.ctx.provide('shortcuts', { catalog: createSnapshotStore([]) } as never)
-  runtime.ctx.provide('layout', { toggleSidebar: vi.fn() })
+  runtime.ctx.provide('layout', { selectPanel: vi.fn() })
   runtime.ctx.provide('uiWorkspace', { startSession: vi.fn() } as never)
   const locale = new LocaleRuntime(runtime.ctx)
   locale.register('common', { zh: commonZh, en: commonEn })
@@ -56,58 +56,41 @@ async function bench(options: { locale?: 'en' } = {}) {
 describe('sidebar shell snapshots', () => {
   it('renders the expanded column in the default locale (zh, no setLocale)', async () => {
     const { runtime } = await bench()
-    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 300 })
+    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 236 })
     // Wordmark + capsule both start a session in the expanded state.
-    expect(slot.view.getAllByRole('button', { name: '新建会话' })).toHaveLength(2)
+    expect(slot.view.getAllByRole('button', { name: '新建任务' })).toHaveLength(2)
     expect(slot.container).toMatchSnapshot()
     await runtime.dispose()
   })
 
   it('renders the expanded column (wordmark, capsule, empty holes)', async () => {
     const { runtime } = await bench({ locale: 'en' })
-    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 300 })
+    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 236 })
     // Wordmark + capsule both start a session in the expanded state.
-    expect(slot.view.getAllByRole('button', { name: 'New session' })).toHaveLength(2)
+    expect(slot.view.getAllByRole('button', { name: 'New task' })).toHaveLength(2)
     expect(slot.container).toMatchSnapshot()
     await runtime.dispose()
   })
 
-  it('renders the collapsed rail after the crossfade settles, in place', async () => {
-    const { runtime } = await bench({ locale: 'en' })
-    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 300 })
-    const shell = slot.container.firstElementChild
-    slot.update({ collapsed: true, width: 56 })
-    // The wide content (wordmark shortcut) unmounts at the 150ms settle;
-    // only the rail's capsule remains a New-session button.
-    await waitFor(() => {
-      expect(slot.view.getAllByRole('button', { name: 'New session' })).toHaveLength(1)
-    })
-    expect(slot.container).toMatchSnapshot()
-    // Same tree position: the owner flip re-rendered the shell in place.
-    expect(slot.container.firstElementChild).toBe(shell)
-    await runtime.dispose()
-  })
 
   it('a locale switch refreshes mounted copy without re-registration', async () => {
     const { runtime, locale } = await bench()
-    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 300 })
-    expect(slot.view.getAllByRole('button', { name: '新建会话' })).toHaveLength(2)
+    const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 236 })
+    expect(slot.view.getAllByRole('button', { name: '新建任务' })).toHaveLength(2)
     // Same fiber, same registration: setLocale alone re-renders the outlet.
     act(() => { locale.setLocale('en') })
-    expect(slot.view.getAllByRole('button', { name: 'New session' })).toHaveLength(2)
-    expect(slot.view.queryByRole('button', { name: '新建会话' })).toBeNull()
+    expect(slot.view.getAllByRole('button', { name: 'New task' })).toHaveLength(2)
+    expect(slot.view.queryByRole('button', { name: '新建任务' })).toBeNull()
     await runtime.dispose()
   })
 
-  it('renders Windows caption controls in expanded and collapsed states', async () => {
+  it('renders the fixed Windows sidebar', async () => {
     document.documentElement.setAttribute('data-windows-titlebar', '')
     const { runtime } = await bench({ locale: 'en' })
     try {
-      const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 300 })
+      const slot = runtime.renderSlot('sidebar', { collapsed: false, width: 236 })
       expect(slot.container).toMatchSnapshot('windows expanded')
-      slot.update({ collapsed: true, width: 0 })
-      expect(slot.view.getAllByRole('button', { name: 'New session' })).toHaveLength(1)
-      expect(slot.container).toMatchSnapshot('windows collapsed')
+
     } finally {
       await runtime.dispose()
       document.documentElement.removeAttribute('data-windows-titlebar')

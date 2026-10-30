@@ -25,7 +25,7 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
-Use this package when the Web bundle should let users export a session log. It requires Connection, the command registry, Session query and persistence, and attachments. Mount the plugin, then choose `Copy Session as Markdown` or `Download session log` from the Session Header's more-actions menu, or type `/export`; the browser copies the transcript or downloads `dsh-session-<id>.zip`.
+Use this package when the Web bundle should let users export a session log. It requires Connection, the command registry, Session query and persistence, and attachments. Mount the plugin, then choose `Copy Session as Markdown` or `Download session log` from the Session Header's more-actions menu, or type `/export`; the browser copies the transcript or downloads `lxo-session-<id>.zip`.
 
 ### Copy Session as Markdown
 
@@ -68,6 +68,16 @@ The Web bundle mounts the package with Connection, `dsh-commands`, `dsh-client-u
 | Field | Default | Meaning |
 |---|---|---|
 | `compressionLevel` | `6` | DEFLATE level from 0 through 9 for each ZIP entry. |
+| `encryptionRecipient` | absent | Optional age public recipient; encrypts the whole ZIP when nonempty. |
+
+<a id="administrator-encrypted-exports"></a>
+### Administrator-encrypted exports
+
+Desktop exports use the public recipient configured by the shipped Web bundle and download as `lxo-session-<id>.zip.age`. Ordinary Web exports remain ZIP files when `encryptionRecipient` is absent or empty. A nonempty invalid recipient prevents the export plugin from loading; encryption and stream errors never fall back to plaintext. GET and HEAD report the same encrypted filename and `x-lxo-archive-format: age`. Markdown copy and local Session storage remain unchanged.
+
+Administrators run `node packages/session-query/session-log-export/scripts/session-log-admin.mjs keygen <new-directory>` from a source checkout with dependencies installed. This creates `recipient.txt`, password-encrypted `identity.age`, and a random `password.txt`; existing directories are refused. Only the public recipient belongs in the Desktop composition. Keep the administrator directory off employee machines, back up both private files, and retain old identities when rotating the public recipient. POSIX directories/files use modes 0700/0600. On Windows, create keys beneath an administrator-only parent directory and verify the new directory ACL; `chmod` does not enforce Windows isolation.
+
+Run `node packages/session-query/session-log-export/scripts/session-log-admin.mjs decrypt <identity.age> <password.txt> <archive.zip.age> <output.zip>`. The password is read from its file, never a command-line value. The tool writes into a private temporary directory beside the destination and publishes only after complete authentication; wrong credentials, malformed or oversized headers, truncation, and corruption produce no completed ZIP. Existing output is never overwritten. The destination filesystem must support hard links. Administrator downloads can also use a standalone bundle of the same tool and Node.js 22 or later; the employee runtime does not contain administrator keys or this tool.
 
 ### Command contract
 

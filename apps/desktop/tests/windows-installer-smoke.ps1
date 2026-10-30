@@ -245,6 +245,35 @@ try {
     $registration = Get-ItemProperty ('HKCU:\Software\' + $RegistryKey)
     if ($registration.InstallLocation.TrimEnd('\') -ne $installPath) { throw 'Silent update changed InstallLocation' }
     $results.Add('silent-update-retains-directory-and-ignores-unrelated-process')
+    $process = Start-Process -FilePath $Installer -ArgumentList '/S --updated --force-run' -PassThru -WindowStyle Hidden
+    $processes.Add($process)
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    $updateWindow = [IntPtr]::Zero
+    do {
+        if ($process.HasExited) { throw 'Update exited without presenting installation progress' }
+        $updateWindow = [InstallerCapture]::Find($process.Id)
+        if ($updateWindow -ne [IntPtr]::Zero -and [InstallerCapture]::IsWindowVisible($updateWindow)) { break }
+        Start-Sleep -Milliseconds 25
+    } while ($timer.Elapsed.TotalSeconds -lt 30)
+    if ($updateWindow -eq [IntPtr]::Zero -or -not [InstallerCapture]::IsWindowVisible($updateWindow)) {
+        throw 'Update did not display installation progress'
+    }
+    if ([InstallerCapture]::FindButton($process.Id, $copy.INSTALLER_INSTALL) -ne [IntPtr]::Zero) {
+        throw 'Update displayed a welcome page instead of starting installation'
+    }
+    [void][InstallerCapture]::Save($updateWindow, (Join-Path $OutputDirectory 'update-progress.png'))
+    if (-not $process.WaitForExit(60000) -or $process.ExitCode -ne 0) { throw 'Visible update did not finish automatically' }
+    $timer.Restart()
+    do {
+        $app = Get-Process -Name $ProductName -ErrorAction SilentlyContinue
+        if ($app) { break }
+        Start-Sleep -Milliseconds 25
+    } while ($timer.Elapsed.TotalSeconds -lt 15)
+    if (-not $app -or $app.Path -ne $appPath) { throw 'Visible update did not relaunch the application' }
+    $processes.Add($app)
+    Dismiss $app 'Installer test application is running.'
+    if (-not $app.WaitForExit(10000)) { throw 'Updated test application did not exit' }
+    $results.Add('update-shows-progress-skips-welcome-and-relaunches-without-finish-click')
     Run-Silent ('/S /allusers /D=' + $installPath) 2
     $foreign = Join-Path $OutputDirectory 'Foreign App'
     New-Item -ItemType Directory -Path $foreign | Out-Null

@@ -28,6 +28,24 @@ async function mockPlatform() {
   let init: Record<string, string> = {}
   let failExchange = false
   const server = createServer((req, res) => {
+    if (req.url === '/company-login/exchange') {
+      let body = ''
+      req.setEncoding('utf8')
+      req.on('data', (chunk: string) => { body += chunk })
+      req.on('end', () => {
+        const value = JSON.parse(body) as Record<string, string>
+        if (Object.keys(value).sort().join(',') !== 'code,redirectUri' || value.code !== 'fixture-code') { res.writeHead(400).end(); return }
+        res.setHeader('content-type', 'application/json')
+        res.end(JSON.stringify({ apiKey: 'sk-company-fixture', account: 'employee', email: 'employee@example.test' }))
+      })
+      return
+    }
+    if (req.url === '/v1/models') {
+      if (req.headers.authorization !== 'Bearer sk-company-fixture') { res.writeHead(401).end(); return }
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify({ data: [{ id: 'company-test', name: 'Company test', context_window: 32000, max_tokens: 4096 }] }))
+      return
+    }
     // The real Host composition identifies every Platform request with the five client headers.
     const expected = {
       'x-client-bundle-id': '', 'x-client-platform': process.platform === 'win32' ? 'desktop-win' : 'desktop-mac',
@@ -83,7 +101,7 @@ async function mockPlatform() {
 }
 
 describe.skipIf(!existsSync(builtHost))('built Desktop welcome flow', () => {
-  it('persists explicit API keys and browser account login independently across Host restarts', async () => {
+  it.each(['legacy', 'company', 'company-upgrade'])('persists %s credentials and model settings across Host restarts', async (mode) => {
     vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
     const root = mkdtempSync(join(tmpdir(), 'dsh-desktop-welcome-'))
     let host: DesktopHostProcess | undefined
@@ -121,8 +139,23 @@ describe.skipIf(!existsSync(builtHost))('built Desktop welcome flow', () => {
         dsh: project,
       })
       await manager.applyRelease()
-      writeFileSync(join(paths.profile, 'cordis.patch.yml'), `- id: webserver\n  config:\n    host: 127.0.0.1\n    port: 0\n- id: deepseek-account\n  config:\n${process.platform === 'linux' ? '    desktopPlatform: darwin\n' : ''}    platformOrigin: ${platform.origin}\n    allowLoopbackHttp: true\n    requestHeaders:\n      Cookie: test_gate=synthetic\n`)
+      writeFileSync(join(paths.profile, 'cordis.patch.yml'), `- id: webserver\n  config:\n    host: 127.0.0.1\n    port: 0\n- id: deepseek-account\n  config:\n    companyLogin: ${mode === 'company'}\n    desktopPlatform: ${process.platform === 'win32' ? 'win32' : 'darwin'}\n    companyLoginEndpoint: ${platform.origin}/company-login/exchange\n    inferenceOrigin: ${mode === 'legacy' ? 'https://api.deepseek.com' : 'http://ai-gateway.haierxj.cn'}\n    platformOrigin: ${platform.origin}\n    allowLoopbackHttp: true\n    requestHeaders:\n      Cookie: test_gate=synthetic\n`)
+      if (mode === 'legacy') writeFileSync(join(paths.profile, 'cordis.patch.yml'),
+        readFileSync(join(paths.profile, 'cordis.patch.yml'), 'utf8') + '- id: llm-pi-ai\n  disabled: true\n- id: llm-deepseek\n  disabled: false\n')
+      if (mode === 'company-upgrade') {
+        writeFileSync(join(paths.profile, 'cordis.patch.yml'),
+          readFileSync(join(paths.profile, 'cordis.patch.yml'), 'utf8')
+          + '- id: llm-pi-ai\n  config:\n    providers:\n      company-gateway:\n        models: [{id: old-model}]\n- id: llm-deepseek\n  disabled: false\n')
+        await manager.applyRelease()
+        expect(readFileSync(join(paths.profile, 'cordis.patch.yml'), 'utf8')).toContain('HaierCash')
+        expect(readFileSync(join(paths.profile, 'cordis.patch.yml'), 'utf8')).toContain('port: 18743')
+        // The upgrade repairs the deployed callback port; this concurrent fixture then requests an OS-assigned listener.
+        writeFileSync(join(paths.profile, 'cordis.patch.yml'),
+          readFileSync(join(paths.profile, 'cordis.patch.yml'), 'utf8') + '- id: webserver\n  config:\n    host: 127.0.0.1\n    port: 0\n')
+      }
       let backend: DesktopWelcomeBackend
+      let rpc: (method: string) => Promise<unknown>
+      const companyMode = mode !== 'legacy'
       let hostOrigin = ''
       const restart = async (): Promise<void> => {
         await host?.stop()
@@ -140,10 +173,82 @@ describe.skipIf(!existsSync(builtHost))('built Desktop welcome flow', () => {
           return fetch(new URL(response.headers.get('location')!, url), { headers: { cookie } })
         }
         backend = await connectDesktopWelcome(url, send, () => Promise.resolve(cookie))
+        rpc = async (method) => {
+          const response = await send(new URL(`/api/${method}`, url), {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ type: 'client-request', rpcId: 'acceptance', method, payload: { args: {} } }),
+          })
+          const envelope = await response.json() as { result: { ok: boolean; value: unknown } }
+          expect(envelope.result.ok).toBe(true)
+          return envelope.result.value
+        }
+        if (companyMode) {
+          const response = await send(new URL('/api/llm/listProviders', url), {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ type: 'client-request', rpcId: 'providers', method: 'llm/listProviders', payload: { args: {} } }),
+          })
+          const envelope = await response.json() as { result: { ok: boolean; value: { id: string; name: string }[] } }
+          expect(envelope.result.ok).toBe(true)
+          expect(envelope.result.value.some(provider => provider.id === 'company-gateway')).toBe(true)
+          expect(envelope.result.value.find(provider => provider.id === 'company-gateway')?.name).toBe('HaierCash')
+          expect(envelope.result.value.some(provider => provider.id === 'deepseek-official')).toBe(false)
+        }
       }
       const status = async () => backend.read()
       const fingerprint = (): string => createHash('sha256')
         .update(readFileSync(join(home, '.credentials.yaml'))).digest('hex')
+      if (companyMode) {
+        const companyModels = async () => {
+          const catalog = await rpc('session/modelCatalog') as { groups: { id: string; models: unknown[] }[] }
+          return catalog.groups.find(group => group.id === 'company-gateway')?.models ?? []
+        }
+        // Replace only the external gateway; credentials, discovery, settings and provider registration use the built Host.
+        const redirectGateway = `const original = globalThis.fetch; globalThis.fetch = (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        return original(['http://ai-gateway.haierxj.cn', 'http://172.28.236.3:18765'].includes(url.origin)
+          ? new URL(url.pathname + url.search, '${platform.origin}') : input, init);
+      };`
+        vi.stubEnv('NODE_OPTIONS', `--import=data:text/javascript,${encodeURIComponent(redirectGateway)}`)
+        await restart()
+        expect(await status()).toMatchObject({ hasApiKey: false })
+        expect(await companyModels()).toEqual([])
+        expect(await backend!.save('wrong-company-key')).toEqual({ ok: false })
+        expect(await backend!.save('sk-company-fixture')).toEqual({ ok: true })
+        expect(await status()).toMatchObject({ hasApiKey: true })
+        await backend!.account.start(desktopClientMetadata('en'))
+        await expect.poll(async () => (await backend!.account.state()).attempt?.phase).toBe('waiting-browser')
+        const waiting = await backend!.account.state()
+        const authorize = new URL(waiting.attempt?.authorizeUrl ?? '')
+        const callback = new URL(authorize.searchParams.get('redirect_uri') ?? '')
+        callback.search = new URLSearchParams({ code: 'fixture-code', state: authorize.searchParams.get('state') ?? '' }).toString()
+        const wrong = new URL(callback)
+        wrong.searchParams.set('state', 'wrong')
+        expect((await fetch(wrong)).status).toBe(400)
+        const approved = await fetch(callback, { redirect: 'manual' })
+        expect(approved.status).toBe(302)
+        expect(approved.headers.get('location')).toBe('dsh://open')
+        expect(await status()).toMatchObject({ loggedIn: true, hasApiKey: true })
+        expect(await companyModels()).toHaveLength(1)
+        await backend!.account.signOut(desktopClientMetadata('en'))
+        expect(await status()).toMatchObject({ loggedIn: false, hasApiKey: false })
+        expect(await companyModels()).toEqual([])
+        expect(readFileSync(join(home, '.credentials.yaml'), 'utf8')).not.toContain('sk-company-fixture')
+        await backend!.account.start(desktopClientMetadata('en'))
+        await expect.poll(async () => (await backend!.account.state()).attempt?.phase).toBe('waiting-browser')
+        const retry = new URL((await backend!.account.state()).attempt!.authorizeUrl!)
+        const retryCallback = new URL(retry.searchParams.get('redirect_uri')!)
+        retryCallback.search = new URLSearchParams({ code: 'fixture-code', state: retry.searchParams.get('state')! }).toString()
+        expect((await fetch(retryCallback, { redirect: 'manual' })).status).toBe(302)
+        expect(await status()).toMatchObject({ loggedIn: true, hasApiKey: true })
+        expect(await companyModels()).toHaveLength(1)
+        await restart()
+        expect(await status()).toMatchObject({ loggedIn: true, hasApiKey: true })
+        expect(await companyModels()).toHaveLength(1)
+        await backend!.account.signOut(desktopClientMetadata('en'))
+        expect(await status()).toMatchObject({ loggedIn: false, hasApiKey: false })
+        expect(await companyModels()).toEqual([])
+        return
+      }
       await restart()
       expect(await status()).toMatchObject({ hasApiKey: false, localePreference: null })
       const before = fingerprint()

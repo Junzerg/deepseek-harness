@@ -150,6 +150,18 @@ The installer copies its startup script into `runner/dsh-service`, sets the serv
 
 ## Unsigned Windows test installer
 
+### Intranet updates
+
+The staged site includes a `Dockerfile` for an Nginx distribution image. On the server, run `docker build --build-arg NGINX_IMAGE=<existing-nginx-image:tag> -t lingxi-office-distribution:<version> .` from the extracted site directory, then `docker run -d --name lingxi-office-distribution --restart unless-stopped -p 18765:18765 lingxi-office-distribution:<version>`. Use an unused container name and host port; existing Nginx containers can remain running. Offline builds require the selected base image to exist locally. The image contains all staged versions, so retain the staging history and rebuild it for subsequent releases.
+
+The static download page keeps the newest listed version at the top and paginates older versions in groups of five, showing navigation only when needed. It is available at `/versions` on the same Nginx port; installer links use `/versions/<version>/lingxi-office-<version>.exe`. After packaging, run `node apps/desktop/scripts/prepare-intranet-site.mjs apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts apps/desktop/.desktop-build/intranet-site` to verify the installer hash and stage the page, version list, feed and binaries. Transfer the generated `versions/` and `updates/` directories into `/srv/lingxi-office/`; transfer binaries before feed metadata. Keep the local staging directory between releases to retain the version list. The server needs Nginx only; no Node.js server process is required.
+
+For unsigned Windows x64 installations with application-managed updates, copy [intranet.env.example](../config/intranet.env.example) to `apps/desktop/.env.windows` without selecting a machine preset. `DSH_DESKTOP_INTRANET_UPDATE_URL` selects an HTTP(S) feed directory; it enables ordinary update checks and downloads and omits mandatory policy and test authentication. This mode rejects signed and macOS builds and cannot use the COS uploader. HTTP and unsigned executables rely on control of the internal network and server; file hashes detect corruption but do not authenticate the publisher.
+
+After confirming the complete build version, run `pnpm run package:desktop:win:x64:unsigned --build-version <confirmed-version>`. Retain the EXE, its `.exe.blockmap`, and `nightly.yml` from `apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/`. Each subsequent version must compare greater than the installed version. Validate the generated feed and test download, confirmation, installation and relaunch with two versions before distribution.
+
+On the Linux server, install Nginx, create `/srv/lingxi-office/updates/win-x64/`, and include [intranet-nginx.conf](../config/intranet-nginx.conf) in Nginx's `http` configuration. Check for port conflicts, run `nginx -t`, reload Nginx, and allow internal TCP traffic on port `18765`. Copy the EXE and blockmap into that directory first, then atomically replace `nightly.yml` last; preserve filenames and older binaries. Verify the feed and its referenced files from an internal Windows computer at `http://172.28.236.3:18765/updates/win-x64/nightly.yml`. Nginx deployment and installed-upgrade qualification require access to the internal environment.
+
 On Windows x64, use the complete unsigned packaging command for local installation testing:
 
 ```sh
@@ -171,7 +183,7 @@ pnpm run package:desktop:mac:arm64:unsigned
 pnpm run package:desktop:mac:x64:unsigned
 ```
 
-Add `--check` to validate local configuration and tools without building, or `--dir` to stop at the unpacked application. The DMG is `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/deepseek-harness-<version>-mac-<arch>-unsigned.dmg`. After all checks pass, the command prints `DMG:` followed by its absolute path. Open it and copy the application to a local test directory.
+Add `--check` to validate local configuration and tools without building, or `--dir` to stop at the unpacked application. The DMG is `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/lingxi-office-<version>-mac-<arch>-unsigned.dmg`. After all checks pass, the command prints `DMG:` followed by its absolute path. Open it and copy the application to a local test directory.
 
 These commands ignore `.env.macos` and inherited release settings, use `com.deepseek.harness` as the app ID, and omit automatic-update and mandatory-update configuration. Build tools, standard network proxies, and `DSH_DESKTOP_NPM_REGISTRY` remain available from the shell. They skip Developer ID signing, Apple notarization, temporary signing keychains, and notarization proxy changes. Electron receives a local ad-hoc signature without certificates so the modified executable can run; the DMG is unsigned. Both preparation and the assembled application still run runtime integrity and smoke checks. Local builds omit update feeds, ZIPs, and release completion records, and the upload commands cannot publish them. macOS may require approval in System Settings → Privacy & Security to open an unnotarized application.
 
@@ -261,7 +273,7 @@ The Windows installer checks for a running application at startup and after dest
 
 Directory renames, empty-destination removal, and restoration retry Windows errors 5, 32, and 33 up to ten attempts, with 250 ms increasing delays (11.25 seconds of total waiting per operation). Other errors stop immediately. A replacement failure reports the Windows error, affected paths, and restoration outcome in `directory-failure-<timestamp>.log` beside extraction reports. If restoration fails, the installer removes unlocked staging files and preserves the backup. After reporting that failure, exit cleanup does not retry restoration. Keep the backup path named in the report and contact support before reinstalling. Silent installs save the same diagnostic without a dialog.
 
-When extraction fails, the installer writes a report with the 7-Zip result and its complete error output to the updater cache directory as `%LOCALAPPDATA%\<package-derived name>-updater\installer-logs\extract-failure-<timestamp>.log` (currently `@deepseek-aidsh-desktop-updater`) and shows the first error line with a **Copy error details** button; silent installs write only the report. Unsigned Windows builds (`DSH_DESKTOP_UNSIGNED=1`) name their installer `deepseek-harness-<version>-win-x64-unsigned.exe` so they cannot be mistaken for release artifacts.
+When extraction fails, the installer writes a report with the 7-Zip result and its complete error output to the updater cache directory as `%LOCALAPPDATA%\<package-derived name>-updater\installer-logs\extract-failure-<timestamp>.log` (currently `@deepseek-aidsh-desktop-updater`) and shows the first error line with a **Copy error details** button; silent installs write only the report. Unsigned Windows builds (`DSH_DESKTOP_UNSIGNED=1`) name their installer `lingxi-office-<version>-win-x64-unsigned.exe` so they cannot be mistaken for release artifacts.
 
 Windows packaging fixes the 7-Zip filter to `BCJ` for compatibility with the bundled NSIS decoder. This preserves ARM64 binaries carried by dependencies in x64 installers; automatic ARM64 filtering produces entries that this decoder cannot extract.
 
@@ -300,3 +312,19 @@ Keep the generated installer, its version and packaging records together. Review
 ## Dev Note
 
 XXX: Evaluate disk-space monitoring, a maintenance entry point and automatic eviction if disk shortages, sustained cache growth or frequent manual cleanup occur. Any automated cleanup would need coordination with every cache user.
+
+<a id="company-login"></a>
+
+After a failed login, run `docker compose -p lingxi-office logs --since=5m --tail=80 company-login` from `/data/lingxi-office/server/`. `exchange failed` records only the stage (`iam-token`, `iam-userinfo`, `gateway-key`), HTTP status and a fixed error code, excluding response bodies, identities and credentials. `personal key obtained` means the server obtained the personal key; the client must still discover models and select a default.
+## Company login on the versions server
+
+Windows users have no deployment steps. The client embeds `http://172.28.236.3:18765/company-login/exchange` and reuses its original IAM callback and workspace entry. Both application secrets stay on the versions server and are never returned by the endpoint. The server verifies userInfo and derives account from email; it does not accept a client-selected account. Personal keys retain the existing client credential store and model completion.
+
+From the repository root, administrators run `node --import tsx/esm apps/desktop/scripts/prepare-company-login.ts` to create `apps/desktop/.desktop-build/company-login/`. It contains a Node 22 endpoint with no third-party runtime dependencies, Nginx configuration and Compose configuration, without modifying installers, downloads or update feeds. Transfer it to a private deployment directory on the existing versions server, outside the Nginx static root.
+
+1. Copy `company-login.env.example` to `company-login.env` and set only `COMPANY_IAM_CLIENT_SECRET` (the IAM APP176 application secret) and `COMPANY_GATEWAY_AUTH_SECRET` (the supplied gateway authSecret). Restrict file access to administrators; never put it in the versions download directory or container image.
+2. Set `VERSIONS_IMAGE` to the existing versions image, retaining its download contents. Login directly uses the existing internal `node:22-slim` image, without building a new image or pulling over the network; set `NODE_IMAGE` only when its local tag differs. Inspect the existing container on port 18765 and its mounts, preserve its launch parameters and rollback procedure, then replace it using the generated Compose configuration. The login container publishes no additional port.
+3. Run `docker compose up -d --no-build` in the deployment directory. Node only exchanges codes, verifies userInfo and invokes gateway getOrCreate; it has no account database, session manager or callback server. The registered callback is fixed at `http://127.0.0.1:18743/oauth/callback`.
+4. Confirm the original `/versions` download page remains accessible, then test IAM login with a newly built client containing this change. Missing server secrets prevent endpoint startup; IAM or gateway failures reject login. After changing server secrets, run `docker compose up -d --force-recreate company-login`; Windows users take no action.
+
+Browser authorization uses <https://iam-stg.haierxj.com>; server token exchange and userInfo use <http://iam-stg.haiercash.work>. The server also requires access to the test gateway. getOrCreate sends `X-Ploto-Direct-Target: ploto-llm-admin-app` and includes `system=lingxi-office` in the JSON body; the returned username must be `lingxi-office_` followed by the verified email account. The complete .4 installer embeds the company provider as HaierCash at <http://ai-gateway.haierxj.cn/v1>, disables native DeepSeek providers and uses Desktop callback port 18743 without a separate patch. Deployment preparation does not overwrite .3 or .4 installers or publish automatic updates.

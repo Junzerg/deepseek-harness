@@ -29,7 +29,7 @@ it('keeps the automation title intact before moving New to another line', async 
           const create = header.getByRole('button', { name: language === 'en' ? 'New' : '新建', exact: true })
           await page.evaluate(() => document.fonts.ready)
           await create.focus()
-          for (const width of [1680, 800, 520, 440, 390, 430, 1024]) {
+          for (const width of [1680, 980, 700, 620, 570, 610, 1024]) {
             await page.setViewportSize({ width, height: 1000 })
             // The title keeps its natural width at every viewport width, so New
             // stays beside it here; the squeeze case below is what moves it down.
@@ -58,10 +58,9 @@ it('keeps the automation title intact before moving New to another line', async 
             facts.push(`${language} ${width}px: title and New single-line, New beside the title; contained; New retains focus`)
           }
           if (language === 'en') {
-            // 509px collapses the left sidebar to its rail; expanding it leaves the
-            // page column narrow enough (measured 172px) to force the wrap.
-            await page.setViewportSize({ width: 509, height: 1000 })
-            await page.getByRole('button', { name: 'Open sidebar', exact: true }).first().click()
+            // The fixed sidebar leaves a 229px page column; header padding reduces
+            // it to 172px, forcing the button below the intact title.
+            await page.setViewportSize({ width: 465, height: 1000 })
             await expect.poll(() => header.evaluate((element) => {
               const title = element.querySelector('h1')!
               const button = element.querySelector('button')!
@@ -76,7 +75,7 @@ it('keeps the automation title intact before moving New to another line', async 
                   : buttonRect.top >= titleRect.bottom - 1 ? 'below' as const : 'overlapping' as const,
               }
             })).toEqual({ titleSingleLine: true, placement: 'below' })
-            facts.push('en 509px with sidebar expanded: title single-line; New moves below the title')
+            facts.push('en 465px with fixed sidebar: title single-line; New moves below the title')
           }
           expect(consoleWatch.pageErrors).toEqual([])
         } finally {

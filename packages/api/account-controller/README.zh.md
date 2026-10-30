@@ -57,3 +57,5 @@ account 命名空间提供 getState、getProfile / getBalance、getUnnotifiedBon
 ### 开发备注
 
 [桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.zh.md)记录取消和存储的职责。
+
+`completeApiKeySignIn` 在接收手动填写的公司网关 Key 前完成模型发现与默认模型选择；账号 provider 负责激活凭证并报告失败。

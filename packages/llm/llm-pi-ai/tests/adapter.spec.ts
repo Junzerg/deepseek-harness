@@ -74,6 +74,28 @@ beforeEach(() => {
 })
 
 describe('PiAiAdapter provider routing', () => {
+  it('hides account-required models and refuses inference despite a retained API key after sign-out', async () => {
+    const server = await mockServer([{ events: textEvents }])
+    const ctx = await harness(server.url, { accountRequired: true })
+    try {
+      expect(await ctx.llm.listModels('deepseek')).toEqual([])
+      const rejected = await assemble(ctx, { model: 'deepseek-flash', messages: [] })
+      expect(rejected.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
+      expect(server.requests).toHaveLength(0)
+      const resolveToken = vi.fn<(url: string) => Promise<string | undefined>>(async () => 'account-key')
+      ctx.provide('deepseekAccount', { resolveToken } as never)
+      expect((await ctx.llm.listModels('deepseek')).length).toBeGreaterThan(0)
+      expect(resolveToken).toHaveBeenCalledWith(server.url)
+      await assemble(ctx, { model: 'deepseek-flash', messages: [] })
+      expect(server.headers[0]?.authorization).toBe('Bearer account-key')
+      resolveToken.mockResolvedValue(undefined)
+      expect(await ctx.llm.listModels('deepseek')).toEqual([])
+      const signedOut = await assemble(ctx, { model: 'deepseek-flash', messages: [] })
+      expect(signedOut.finish).toMatchObject({ kind: 'error', failure: { code: 'MISSING_CREDENTIAL' } })
+      expect(server.requests).toHaveLength(1)
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it('resolves a catalog model dynamically and uses a private endpoint', async () => {
     const server = await mockServer([{ events: textEvents }])
     const ctx = await harness(server.url)

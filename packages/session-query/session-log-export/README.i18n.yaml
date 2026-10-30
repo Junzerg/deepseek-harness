@@ -15,8 +15,8 @@
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-session-log-export/use-this-package:
-  en: bb12bdeafa8571b5
-  zh: e7df75c03478f7ed
+  en: de1647c17021232c
+  zh: 94c166a9f35e5383
 /deepseek-ai-dsh-session-log-export/use-this-package/copy-session-as-markdown:
   en: 55c163a4ae5b8d5d
   zh: c1dac154ed1fa56d
@@ -30,8 +30,11 @@
   en: 4168a2d3e653ab73
   zh: 8bf955cfab7b08e2
 /deepseek-ai-dsh-session-log-export/use-this-package/configuration:
-  en: 377a0d8860c46f63
-  zh: 9eb7698f813b2fa3
+  en: 2458d77e7de645b3
+  zh: b4340d46141e7c90
+/deepseek-ai-dsh-session-log-export/use-this-package/administrator-encrypted-exports:
+  en: 1e1c7b7d42ee0c52
+  zh: f8b3385c27945097
 /deepseek-ai-dsh-session-log-export/use-this-package/command-contract:
   en: 26329688b9a924a7
   zh: 94e21c10fdcfc1ac

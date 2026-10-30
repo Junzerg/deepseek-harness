@@ -52,9 +52,7 @@ describe.skipIf(webSnapshotMode() === 'record')('web e2e: context details placem
         await panel.waitFor()
         for (const width of [390, 800, 1280]) {
           await page.setViewportSize({ width, height: 900 })
-          await page.locator('[data-sidebar-collapsed="true"]').waitFor({
-            state: width <= 800 ? 'attached' : 'detached',
-          })
+          await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
           await page.evaluate(async () => {
             await Promise.all(document.getAnimations()
               .filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity)

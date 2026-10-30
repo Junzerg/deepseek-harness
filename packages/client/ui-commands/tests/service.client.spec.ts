@@ -1199,3 +1199,21 @@ describe('directory invalidation events', () => {
     expect(source.matchSpace!(proj('s2'), '/attach')).not.toBeUndefined()
   })
 })
+
+it.each([false, true])('shows the Session feedback menu entry only outside Desktop (desktop=%s)', async (desktop) => {
+  if (desktop) vi.stubGlobal('dshDesktop', {})
+  try {
+    const b = await bench({ commands: async () => ({ commands: [{
+      definitionId: CommandDefinitionId('@deepseek-ai/dsh-command-feedback'),
+      name: 'feedback', description: 'Record feedback about this session',
+    }] }) })
+    for (const query of ['', 'feedback']) {
+      const rows = await b.source.candidates(proj('s1'), req(query))
+      expect(rows.some(row => row.name === 'feedback')).toBe(!desktop)
+    }
+    await b.source.matchEnter!(proj('s1'), '/feedback', new AbortController().signal, { attachments: 0 })
+    expect(b.executeCalls).toEqual([{ sessionId: sid('s1'), line: '/feedback', images: [] }])
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})

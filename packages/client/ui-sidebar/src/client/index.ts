@@ -12,9 +12,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SidebarPanelMetadata, SidebarRootInjected } from './contract/slots.ts'
 import { createPanelPins } from './panel-pins.ts'
-import { HeaderLeadingControls } from './HeaderLeadingControls.tsx'
+import { PlaceholderPage, NAV_PAGE_IDS, placeholderPanelId, type PlaceholderInjected } from './MorePage.tsx'
 import { SidebarRoot } from './SidebarRoot.tsx'
-import { en, ja, es, fr, de, ru, pt, zh, type SidebarKey } from './locales.ts'
+import { en, zh, type SidebarKey } from './locales.ts'
 
 export type {
   SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps,
@@ -45,7 +45,7 @@ export const inject = ['slots', 'layout', 'uiWorkspace', 'locale', 'shortcuts']
  */
 export function apply(ctx: ClientContext): void {
   const workspaceNavigation = ctx.get('uiWorkspace') as unknown as WorkspaceNavigation
-  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-sidebar: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar: dictionaries')
   const panels = createSnapshotStore<readonly SidebarPanelMetadata[]>([])
   const syncPanels = (): void => {
     const next = ctx.slots.entriesOfSlot('sidebar.panellist').map(({ options }) => {
@@ -72,7 +72,6 @@ export function apply(ctx: ClientContext): void {
     // The shell's New Session button rides the Workspace UI's shared action
     // (current Session Workspace, then recent Workspace).
     startSession: (workspaceId) => { workspaceNavigation.startSession(workspaceId) },
-    toggleSidebar: () => { ctx.layout.toggleSidebar() },
     selectPanel: (id) => { ctx.layout.selectPanel(id) },
     setPinned: panelPins.setPinned,
     trackEntryClick: (attributes) => { ctx.get('productAnalytics')?.track('sidebar_menu_click', attributes) },
@@ -84,7 +83,6 @@ export function apply(ctx: ClientContext): void {
     children: {
       'sidebar.brand.mark': { kind: 'single', scope: 'root' },
       'sidebar.brand.name': { kind: 'single', scope: 'root' },
-      'sidebar.toggle.badge': { kind: 'single', scope: 'root' },
       'sidebar.panellist': { kind: 'list', scope: 'root' },
       'sidebar.panellist.actions': { kind: 'list', scope: 'root' },
       'sidebar.workspaces': { kind: 'single', scope: 'root' },
@@ -93,14 +91,11 @@ export function apply(ctx: ClientContext): void {
     },
     inject: injectProps,
   }, SidebarRoot))
-  // macOS desktop hides the collapsed sidebar entirely, so the open/New
-  // Session controls move into the frame's window-chrome seat beside the
-  // traffic lights; the occupant reuses the shell's injected actions, and
-  // the AppFrame mounts the seat only while the column is fully hidden.
-  ctx.slots.inject('shell.leading', () => ctx.slots.register({
-    name: 'shell.leading',
-    locale: NS,
-    inject: injectProps,
-  }, HeaderLeadingControls))
+  for (const page of NAV_PAGE_IDS) {
+    ctx.slots.inject('main', () => ctx.slots.register({
+      name: 'main', key: placeholderPanelId(page), locale: NS,
+      inject: (): PlaceholderInjected => ({ page }),
+    }, PlaceholderPage))
+  }
   syncPanels()
 }

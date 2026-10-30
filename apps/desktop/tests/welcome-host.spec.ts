@@ -4,7 +4,7 @@ import { connectDesktopWelcome } from '../src/welcome-backend.ts'
 
 function transport(preference?: string) {
   const keys = new Map<string, string>()
-  const namespaces = [
+  const namespaces: { ns: string; value: Record<string, unknown> }[] = [
     { ns: 'llm-deepseek', value: { apiKeyEnv: 'CUSTOM_DEEPSEEK_KEY' } },
     { ns: 'llm-pi-ai', value: { profiles: { example: { apiKeyEnv: 'EXAMPLE_API_KEY' } } } },
     { ns: 'locale', value: preference === undefined ? {} : { preference } },
@@ -14,7 +14,7 @@ function transport(preference?: string) {
     const { rpcId, method, payload } = JSON.parse(init.body as string) as {
       rpcId: string
       method: string
-      payload: { args: { ref: string; value: string; refs: string[] } }
+      payload: { args: { ref: string; value: string; refs: string[]; apiKey: string } }
     }
     let value: unknown
     if (method === 'account/getState') value = { links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out', attempt: null }
@@ -23,6 +23,7 @@ function transport(preference?: string) {
     else if (method === 'productAnalytics/enabled') value = true
     else if (method === 'productAnalytics/report') value = undefined
     else if (method === 'credentials/set') keys.set(payload.args.ref, payload.args.value)
+    else if (method === 'account/completeApiKeySignIn') keys.set('COMPANY_GATEWAY_API_KEY', payload.args.apiKey)
     else value = Object.fromEntries(payload.args.refs.map(ref => [ref, { configured: keys.has(ref), writable: true }]))
     return Response.json({ type: 'server-response', rpcId, result: { ok: true, value } })
   })
@@ -32,6 +33,16 @@ function transport(preference?: string) {
 const url = 'http://127.0.0.1:19387/?token=fixture'
 
 describe('desktop welcome Web operations', () => {
+  it('uses the registered company provider and existing account Remote for manual key completion', async () => {
+    const host = transport()
+    host.namespaces.push({ ns: 'llm-pi-ai', value: { providers: { 'company-gateway': { apiKeyEnv: 'COMPANY_GATEWAY_API_KEY' } } } })
+    host.namespaces.splice(1, 1)
+    const backend = await connectDesktopWelcome(url, host.send)
+    expect(await backend.save('fixture-company-key')).toEqual({ ok: true })
+    expect(host.keys.get('COMPANY_GATEWAY_API_KEY')).toBe('fixture-company-key')
+    expect(host.keys.has('CUSTOM_DEEPSEEK_KEY')).toBe(false)
+    expect(host.send.mock.calls.some(([input]) => input.endsWith('/api/account/completeApiKeySignIn'))).toBe(true)
+  })
   it('authenticates through Web and stores only through the configured credential reference', async () => {
     const host = transport()
     const backend = await connectDesktopWelcome(url, host.send)

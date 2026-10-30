@@ -17,9 +17,8 @@ import type { PanelInfo } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
-import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
-import { en, ja, es, fr, de, ru, pt, zh } from './shortcut-locales.ts'
 import { ThemePresenter } from './theme-presenter.ts'
+import { en, zh } from './locales.ts'
 
 // Contract exports only (export-convergence rule: cross-package consumers
 // keep a symbol exported; test-only/package-internal symbols live off /src).
@@ -41,8 +40,7 @@ declare module '@deepseek-ai/cordis' {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Layout keyboard command labels. */
-    'shortcuts.layout': keyof typeof zh
+    layout: keyof typeof zh
   }
 
   interface GlobalStandardProps {
@@ -62,8 +60,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * the seats it declares disappear with it. To add something to the
      * sidebar, register into one of those inner seats instead.
      *
-     * The occupant receives the frame's live column state (collapsed, width)
-     * and is expected to render the compact control rail while collapsed.
+     * The occupant receives the fixed 236px column width and an expanded state.
      */
     'sidebar': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
@@ -80,7 +77,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * Whether the panel is shown, and whether it takes a track, is the
      * occupant's own recorded business — it reports the composition of its
      * expanded and presentation state through `ctx.layout`, and the frame sizes
-     * the track and places the resize handle from that. The expand control is
+     * the track for wide windows from that. The expand control is
      * not this column's: it is a button in the conversation header. The root
      * occupant decides when to render its Session-bound content.
      */
@@ -103,20 +100,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * `id` is added beside the shipped entries instead of replacing them.
      */
     'shell.overlay': { kind: 'list'; scope: 'root' }
-    /**
-     * Window-chrome seat at the frame's top-left, over every main panel.
-     * Mounted only while the sidebar column is fully hidden (macOS desktop
-     * collapse; other platforms keep the rail), so the occupant can assume the
-     * frame edge is the window edge and the macOS traffic lights sit before it.
-     * OCCUPIED by ui-sidebar's reopen/New Session controls.
-     *
-     * While the seat is mounted the frame publishes
-     * `--dsh-frame-leading-clearance` (the inline inset the seat's band
-     * occupies, measured from the frame's left edge); a main panel whose
-     * content reaches the top-left corner pads by it so nothing lands under
-     * the lights or the controls.
-     */
-    'shell.leading': { kind: 'single'; scope: 'root' }
   }
 }
 
@@ -125,29 +108,29 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 // from the framework-derived shares. Conversation business state and actions arrive through
 // framework-standard hooks and each registrant's inject face, not owner props.
 
-/** Sidebar owner share: live column state from the frame's concession solve. */
+/** Sidebar owner share: the fixed, expanded navigation column. */
 export interface SidebarOwnerProps {
-  /** True when the sidebar is closed (the column renders the compact control rail). */
+  /** Always false: the navigation column stays expanded. */
   collapsed: boolean
-  /** Rendered column width in px (SIDEBAR_COLLAPSED when collapsed). */
+  /** Fixed navigation column width in px. */
   width: number
 }
 
 /** Right column owner share: resolved normal geometry and opening eligibility. */
 export interface RightbarOwnerProps {
-  /** Resolved normal panel width in px, not the saved preference; zero if it cannot fit. */
+  /** Fixed normal panel width in px, including overlay presentation. */
   width: number
   /** Current frame width in px. */
   viewportWidth: number
   /**
-   * Whether a normal right panel can retain 300px beside a 400px center.
-   * Before a narrow opening, includes the space from collapsing the left sidebar.
+   * Whether the panel can be opened. Fixed-width panels remain available
+   * in narrow windows, where they overlay the main column.
    */
   canShow: boolean
 }
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme', 'locale', 'shortcuts']
+export const inject = ['slots', 'theme', 'locale']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
@@ -156,9 +139,7 @@ export const inject = ['slots', 'theme', 'locale', 'shortcuts']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register('shortcuts.layout', { zh, en, ja, es, fr, de, ru, pt }), 'layout: command labels')
-  const t = ctx.locale.bind('shortcuts.layout')
-
+  ctx.effect(() => ctx.locale.register('layout', { zh, en }), 'ui-layout: control labels')
   ctx.effect(() => {
     const handle = createLayoutStore()
     const instance = handle.create()
@@ -177,33 +158,19 @@ export function apply(ctx: ClientContext): void {
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
       name: 'root',
-      locale: 'common',
+      locale: 'layout',
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
         'main': { kind: 'keyed', scope: 'root' },
         'rightbar': { kind: 'single', scope: 'root' },
         'shell.bottom': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
-        'shell.leading': { kind: 'single', scope: 'root' },
       },
       store,
     }, AppFrame)
-    const disposeShortcut = ctx.shortcuts.register({
-      id: 'sidebar.left.toggle' as ShortcutCommandId, label: () => t('toggle'), aliases: ['sidebar', 'toggle left sidebar'],
-      defaults: {
-        'desktop:macos': { code: 'KeyB', modifiers: ['primary'] },
-        'desktop:windows': { code: 'KeyB', modifiers: ['primary'] },
-        'desktop:linux': { code: 'KeyB', modifiers: ['primary'] },
-        'web:macos': { code: 'KeyB', modifiers: ['primary', 'alt'] },
-        'web:windows': { code: 'KeyB', modifiers: ['primary', 'alt'] },
-      },
-      regions: ['page', 'editable'], modals: [],
-      resolve: () => ({ status: 'handled', run: () => { layout.toggleSidebar() } }),
-    })
     const disposePanels = ctx.slots.subscribe('main', retainMainPanels)
     retainMainPanels()
     return () => {
-      disposeShortcut()
       layout.dispose()
       disposePanels()
       disposeRegistration()

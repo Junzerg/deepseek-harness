@@ -111,7 +111,6 @@ describe('web e2e: Markdown file links', () => {
     await page.locator('[role="treeitem"]').first().click()
     await page.locator('[role="treeitem"]').nth(1).click()
     await page.getByRole('button', { name: 'src/example.txt:24–30', exact: true }).waitFor()
-    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
   }, 120_000)
 
   afterAll(async () => {

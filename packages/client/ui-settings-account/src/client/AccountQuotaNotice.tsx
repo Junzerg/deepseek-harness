@@ -29,6 +29,7 @@ type AccountQuotaNoticeProps = PropsRuntime<'shell.quota-notice'>
 export function AccountQuotaNotice({ matched, openPlatformPage, useAccount, usePlatformPage, t }: AccountQuotaNoticeProps) {
   const { dismiss, keepOpen, message } = matched
   const accountStatus = useAccount(snapshot => snapshot.view?.status)
+  const platformAvailable = useAccount(snapshot => snapshot.platformAvailable !== false)
   const accountFailed = useAccount(snapshot => snapshot.failed)
   const signedIn = accountStatus === 'credential-stored'
   const platformPage = usePlatformPage(current => current)
@@ -60,7 +61,7 @@ export function AccountQuotaNotice({ matched, openPlatformPage, useAccount, useP
   // failure ends that wait and leaves the generic warning available.
   if (accountStatus === undefined && !accountFailed && openPlatformPage !== undefined) return null
   // Signed out, unavailable, or without the native host, use generic notice copy.
-  if (!signedIn || openPlatformPage === undefined) {
+  if (!signedIn || !platformAvailable || openPlatformPage === undefined) {
     return <Toast text={message} icon={<IconWarningOutlineRegular size={18} />} onDone={dismiss} />
   }
   // Defer the Modal until the native page closes; do not mount hidden focus or

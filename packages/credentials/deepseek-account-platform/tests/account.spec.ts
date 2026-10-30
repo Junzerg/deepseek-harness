@@ -274,6 +274,29 @@ it('stores a grant before redirecting, restores account presence, and signs out 
   expect((await f.ctx.credentials.describeRecord(credentialKey('deepseek-account-platform', 'device'))).configured).toBe(true)
 })
 
+it('signs in again after logout with the same device and a fresh browser callback', async () => {
+  const f = await fixture()
+  await f.account.startSignIn(clientMetadata(), f.callbackOrigin, 'desktop')
+  const first = await f.wait('waiting-browser')
+  const firstCallback = f.callback()
+  expect((await fetch(firstCallback, { redirect: 'manual' })).status).toBe(302)
+  await f.wait('succeeded')
+  const deviceKey = credentialKey('deepseek-account-platform', 'device')
+  const device = await f.ctx.credentials.readRecord(deviceKey)
+
+  expect((await f.account.signOut(clientMetadata())).status).toBe('signed-out')
+  await f.account.startSignIn(clientMetadata(), f.callbackOrigin, 'desktop')
+  const second = await f.wait('waiting-browser')
+  expect(second.attempt!.id).not.toBe(first.attempt!.id)
+  expect((await fetch(firstCallback, { redirect: 'manual' })).status).toBe(400)
+  f.exchangeResponse({ token: 'second-account-token' })
+  expect((await fetch(f.callback(), { redirect: 'manual' })).status).toBe(302)
+  expect((await f.wait('succeeded')).status).toBe('credential-stored')
+  expect(f.count()).toBe(2)
+  expect(await f.ctx.credentials.readRecord(deviceKey)).toEqual(device)
+  expect((await f.account.getPlatformSession())?.token).toBe('second-account-token')
+})
+
 it('does not persist a delayed exchange after cancellation or replace the next attempt', async () => {
   const f = await fixture()
   f.exchangeResponse({ user: { email: 'c***@example.invalid', id_profile: { name: 'Cancelled User' } } })

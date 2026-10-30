@@ -11,6 +11,16 @@ import {
 const RELEASE_ID = '0123456789abcdef0123456789abcdef'
 
 describe('desktop auto-update environment', () => {
+  it('uses an intranet feed without official deployment settings and refuses COS uploads', () => {
+    const environment = { DSH_DESKTOP_INTRANET_UPDATE_URL: 'http://172.28.236.3:18765/updates/win-x64' }
+    expect(resolveDesktopAutoUpdateConfig(environment, 'win32', 'x64').publicUrl)
+      .toBe('http://172.28.236.3:18765/updates/win-x64/')
+    expect(() => resolveDesktopAutoUpdateConfig(environment, 'darwin', 'arm64')).toThrow(/Windows x64/u)
+    expect(() => resolveDesktopUploadConfig(environment, 'win32', 'x64')).toThrow(/COS/u)
+    for (const url of ['', 'file:///tmp/feed', 'http://user:password@host/', 'http://host/?token=1', 'http://host/#feed']) {
+      expect(() => resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_INTRANET_UPDATE_URL: url }, 'win32', 'x64')).toThrow()
+    }
+  })
   it.each([undefined, 'test'])('requires a release ID for deployment %s', (deployment) => {
     const environment = { DSH_DESKTOP_AUTO_UPDATE_ENV: deployment, DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
       DOWNLOAD_TEST_COS_BUCKET: 'test-bucket' }

@@ -13,9 +13,6 @@
         - button "Edit shortcut for New Session"
         - text: New Session ⌥ ⌘ N
       - listitem:
-        - button "Edit shortcut for Toggle left sidebar"
-        - text: Toggle left sidebar ⌥ ⌘ B
-      - listitem:
         - button "Edit shortcut for Search sessions"
         - text: Search sessions ⌥ ⌘ K
       - listitem:

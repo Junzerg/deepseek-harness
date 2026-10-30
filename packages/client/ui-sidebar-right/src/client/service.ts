@@ -125,13 +125,8 @@ export function createSidebarRightController(tabs: SidebarRightTabRegistry, pin:
   }
 }
 
-/** What the controller needs from the page around it: the viewport rule and focus continuity. */
+/** Focus continuity supplied by the surrounding page. */
 export interface SidebarRightHost {
-  /**
-   * Whether the viewport is narrow enough that an expanded panel is presented fullscreen.
-   * @returns the rule's verdict for the frame width the seats last rendered at.
-   */
-  readonly autoFullscreen: () => boolean
   /**
    * Commit a page operation and focus the pane it selects.
    * @param sessionId - the Session whose page is opening.
@@ -618,9 +613,7 @@ export class SidebarRightController implements ISidebarRight {
   toggleFullscreen(target: SidebarRightTarget): void {
     if (!this.isTargetCurrent(target) || target.host === 'float' || !this.isExpanded()) return
     const { sessionId, actions } = this.require()
-    const autoFullscreen = this.host.autoFullscreen()
-    const fullscreen = autoFullscreen || this.mountedSurface()?.layout.mode === 'fullscreen'
-    if (fullscreen && autoFullscreen) actions.setExpanded(sessionId, false)
+    const fullscreen = this.mountedSurface()?.layout.mode === 'fullscreen'
     actions.setMode(sessionId, fullscreen ? 'push' : 'fullscreen')
   }
 

@@ -13,9 +13,6 @@
         - button "Edit shortcut for New Session"
         - text: New Session Ctrl + Alt + N
       - listitem:
-        - button "Edit shortcut for Toggle left sidebar"
-        - text: Toggle left sidebar Ctrl + Alt + B
-      - listitem:
         - button "Edit shortcut for Search sessions"
         - text: Search sessions Ctrl + Alt + K
       - listitem:

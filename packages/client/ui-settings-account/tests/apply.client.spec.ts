@@ -106,6 +106,7 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   vi.stubGlobal('dshDesktop', {})
   const c = await start()
   const actions = operations(c)
+  expect(actions.feedbackDestination).toBe('internal-team')
   expect(c.ctx.slots.entries('settings.models.sign-in')[0]!.inject!()).toBe(actions)
   // The account UI follows the live theme service through the framework hook channel.
   const theme = c.ctx.get('theme') as ThemeRuntime

@@ -134,11 +134,11 @@ describe('web e2e: queue row actions', () => {
       expect(await input.getAttribute('contenteditable')).toBe('true')
       const sending = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
       await compareOrRefreshGolden(SENDING_EXPECTED, sending, MODE)
-      await page.setViewportSize({ width: 390, height: 1000 })
-      await page.locator('[data-sidebar-collapsed="true"]').waitFor()
+      await page.setViewportSize({ width: 570, height: 1000 })
+      await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
       await expect.poll(() => pending.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
       await page.setViewportSize({ width: 1680, height: 1000 })
-      await page.locator('[data-sidebar-collapsed="true"]').waitFor({ state: 'detached' })
+      await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
     } finally {
       release.resolve(undefined)
     }
@@ -165,8 +165,8 @@ describe('web e2e: queue row actions', () => {
     ).toBe(2)
 
     await page.setViewportSize({ width: 640, height: 1000 })
-    await page.locator('[data-sidebar-collapsed="true"]').waitFor()
-    // The responsive sidebar and composer settle independently; sample both
+    await expect.poll(() => page.locator('[class*="sidebarCol"]').evaluate(element => element.getBoundingClientRect().width)).toBe(236)
+    // The fixed sidebar and composer settle independently; sample both
     // rectangles in one browser task so the comparison uses one layout.
     await vi.waitFor(async () => {
       const metrics = await page.evaluate(() => {

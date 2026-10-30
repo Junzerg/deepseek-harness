@@ -65,11 +65,11 @@ const TABLE_NAMES = ['fill', 'wide', 'long-cell']
  * Viewport sweep. The wide stops leave the transcript far wider than the
  * 748px message column, so the breakout relation holds with a fat margin on
  * every platform; the narrow stop drops the transcript below the message
- * column, which must clamp the breakout to neutral. The sidebar is collapsed
- * for the whole sweep (see beforeAll), so the transcript width follows the
- * viewport identically on overlay- and classic-scrollbar platforms.
+ * column, which must clamp the breakout to neutral. The sidebar stays at
+ * 236px throughout the sweep; the right panel stays closed.
  */
-const WIDTHS = [1680, 1100, 640]
+// Keep at least 584px of main content beside the fixed 236px sidebar.
+const WIDTHS = [1680, 1100, 820]
 
 /** A sentence long enough that three of them cannot sit unwrapped in the 748px column. */
 const SENTENCE = 'This cell carries one full sentence so the unwrapped table is far wider than the message column.'
@@ -205,19 +205,19 @@ interface TableStop {
 }
 
 /**
- * Wait for collapsed columns, completed grid transitions, and the
+ * Wait for fixed navigation, a closed right panel, completed grid transitions, and the
  * ConversationRoot ResizeObserver's width publication before measuring tables.
  * @param target - the page whose frame to read.
  */
 async function awaitTableLayout(target: Page): Promise<void> {
   await target.evaluate(async () => { await document.fonts.ready })
   await target.waitForFunction(() => {
-    const element = document.querySelector('[data-sidebar-collapsed][data-rightbar-collapsed]')
+    const element = document.querySelector('[data-rightbar-collapsed]')
     if (element === null) return false
     const tracks = getComputedStyle(element).gridTemplateColumns.split(' ').map(Number.parseFloat)
     const root = element.querySelector<HTMLElement>('div[data-phase]')
-    // Mirrored from ui-layout's SIDEBAR_COLLAPSED; these tests use the Host compiler face.
-    return tracks[0] === 56 && tracks.at(-1) === 0
+    // The sidebar stays fixed while the right panel is closed.
+    return tracks[0] === 236 && tracks.at(-1) === 0
       && element.getAnimations().every(animation =>
         animation.playState === 'finished' || animation.playState === 'idle')
       && root !== null
@@ -278,16 +278,6 @@ describe('web e2e: markdown tables fill the column, wide ones break out and scro
     await sessionRow.waitFor({ timeout: 10_000 })
     await sessionRow.click()
     await page.getByText(TAIL_MARKER, { exact: true }).waitFor({ timeout: 15_000 })
-    // Collapse the sidebar and keep the right column at its rail for the whole
-    // sweep: classic-scrollbar platforms (Linux CI) lose ~15px of layout
-    // width, which shifts how much of a narrow viewport the panes leave the
-    // transcript and lands the narrow stop's readings far from the macOS
-    // ones — and an expanded right column alone pins the transcript to
-    // exactly the message column, which would make every breakout relation
-    // vacuous. With both out of the equation the transcript follows the
-    // viewport identically on every platform, which is what keeps one
-    // committed golden true for all lanes.
-    await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
     await awaitTableLayout(page)
   }, 180_000)
 
@@ -336,7 +326,7 @@ describe('web e2e: markdown tables fill the column, wide ones break out and scro
       expect(wide!.wideHook).toBe(true)
       expect(fill!.wideHook).toBe(false)
       expect(longCell!.wideHook).toBe(false)
-      if (stop.width > 748) {
+      if (stop.width - 236 > 748) {
         // Breakout: the wide wrapper spans past the message column, and its
         // lead padding keeps the table content starting at the message
         // column's left edge (compared to the fill table's content).
@@ -386,7 +376,6 @@ describe('web e2e: markdown tables fill the column, wide ones break out and scro
     onTestFailed(() => saveFailureShot(touchPage, `markdown-wide-table-touch-${engine}`))
     await touchPage.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     const group = touchPage.getByRole('treeitem').first()
-    await touchPage.getByRole('button', { name: 'Open sidebar', exact: true }).first().click()
     await group.click()
     await touchPage.getByRole('treeitem').filter({ hasText: 'Markdown wide tables' }).click()
     await touchPage.getByText(TAIL_MARKER, { exact: true }).waitFor()
@@ -541,7 +530,6 @@ describe('web e2e: markdown tables fill the column, wide ones break out and scro
       await sessionRow.waitFor({ timeout: 10_000 })
       await sessionRow.click()
       await hidpiPage.getByText(TAIL_MARKER, { exact: true }).waitFor({ timeout: 15_000 })
-      await hidpiPage.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
       await awaitTableLayout(hidpiPage)
       const readings = await readTables(hidpiPage)
       const baseline = (await sweep()).find(stop => stop.width === 1100)!

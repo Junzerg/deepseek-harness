@@ -74,3 +74,12 @@ describe('SessionLogDownloadDialog', () => {
     await waitFor(() => { expect(b.dismiss).toHaveBeenCalledWith(SID) })
   })
 })
+
+it('explains that encrypted downloads must be given to an administrator', async () => {
+  const b = bench(new SessionLogDownloadController(async () => new Response(null, {
+    headers: { 'x-lxo-archive-format': 'age' },
+  }), vi.fn()))
+  await act(async () => { await b.controller.download(SID) })
+  expect(b.view.getByText(en['dialog.encryptedSuccessDescription'])).toBeTruthy()
+  await b.controller.dispose()
+})

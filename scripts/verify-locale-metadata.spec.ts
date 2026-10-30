@@ -10,37 +10,22 @@ import { SHIPPED_LOCALE_IDS } from './shipped-locales.ts'
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
-function fixture(ja: unknown = { meta: { title: '名前 {name}', description: '説明' } }): string {
+function fixture(english: unknown = { meta: { title: 'Name {name}' } }): string {
   const root = mkdtempSync(join(tmpdir(), 'dsh-locale-meta-'))
   roots.push(root)
   const directory = join(root, 'packages/demo/plugin/locale')
   mkdirSync(directory, { recursive: true })
-  writeFileSync(join(directory, 'en.json'), JSON.stringify({ meta: { title: 'Name {name}' } }))
+  writeFileSync(join(directory, 'en.json'), JSON.stringify(english))
   writeFileSync(join(directory, 'zh.json'), JSON.stringify({ meta: { title: '名称 {name}', description: '描述' } }))
-  writeFileSync(join(directory, 'ja.json'), JSON.stringify(ja))
-  for (const language of ['es', 'fr', 'de', 'ru', 'pt']) {
-    writeFileSync(join(directory, `${language}.json`), JSON.stringify({ meta: { title: 'Name {name}', description: 'Localized description.' } }))
-  }
   return root
 }
 
-it('accepts Japanese fields from the union of English and Chinese metadata', () => {
+it('accepts English and optional Chinese metadata', () => {
   expect(localeMetadataProblems(fixture())).toEqual([])
 })
 
-it('rejects missing Japanese files, including newly added packages', () => {
-  const root = fixture()
-  rmSync(join(root, 'packages/demo/plugin/locale/ja.json'))
-  expect(localeMetadataProblems(root).join('\n')).toContain('ja.json')
-})
-
-it.each([
-  [{ meta: { title: '名前 {name}' } }, 'missing meta.description'],
-  [{ meta: { title: '名前 {other}', description: '説明' } }, 'changes placeholders'],
-  [{ meta: { title: '', description: '説明' } }, 'expected non-empty text'],
-  [{ meta: { title: '名前 {name}', description: '説明', extra: '余分' } }, 'unexpected meta.extra'],
-])('rejects incomplete or inconsistent Japanese metadata', (ja, diagnostic) => {
-  expect(localeMetadataProblems(fixture(ja)).join('\n')).toContain(diagnostic)
+it('rejects empty English metadata text', () => {
+  expect(localeMetadataProblems(fixture({ meta: { title: '' } })).join('\n')).toContain('expected non-empty text')
 })
 
 it('checks referenced detail documents', () => {
@@ -86,15 +71,11 @@ it('checks nested subpath locale resources and package-relative detail files', (
   for (const language of ['en', 'zh']) writeFileSync(join(directory, `${language}.json`), JSON.stringify({ meta: { title: 'Tools', detail: 'docs/TOOLS.md' } }))
   mkdirSync(join(root, 'packages/demo/plugin/docs'))
   writeFileSync(join(root, 'packages/demo/plugin/docs/TOOLS.md'), '# Tools\n')
-  expect(localeMetadataProblems(root).join('\n')).toContain('locale/tools')
-  expect(localeMetadataProblems(root).join('\n')).toContain('ja.json')
-  writeFileSync(join(directory, 'ja.json'), JSON.stringify({ meta: { title: 'ツール', detail: 'docs/TOOLS.md' } }))
-  for (const language of ['es', 'fr', 'de', 'ru', 'pt']) writeFileSync(join(directory, `${language}.json`), JSON.stringify({ meta: { title: 'Tools', detail: 'docs/TOOLS.md' } }))
   expect(localeMetadataProblems(root)).toEqual([])
 })
 
 it.each(['../../other/README.md', 'docs\\DETAIL.md', 'docs/DETAIL.txt', '/README.md'])('rejects runtime-invalid detail path %s', (detail) => {
-  const root = fixture({ meta: { title: '名前 {name}', description: '説明', detail } })
+  const root = fixture({ meta: { title: 'Name {name}', description: '説明', detail } })
   expect(localeMetadataProblems(root).join('\n')).toMatch(/must (?:be a relative path|name a Markdown file)/u)
 })
 
@@ -108,13 +89,12 @@ it('requires sentence punctuation for English descriptions', () => {
 })
 
 it('permits missing Chinese resources for loadable plugins', () => {
-  const root = fixture({ meta: { title: '名前 {name}' } })
+  const root = fixture({ meta: { title: 'Name {name}' } })
   const directory = join(root, 'packages/demo/plugin')
   mkdirSync(join(directory, 'src'))
   writeFileSync(join(directory, 'src/index.ts'), 'export function apply() {}')
   writeFileSync(join(directory, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-demo' }))
   rmSync(join(directory, 'locale/zh.json'))
-  for (const language of ['es', 'fr', 'de', 'ru', 'pt']) writeFileSync(join(directory, `locale/${language}.json`), JSON.stringify({ meta: { title: 'Name {name}' } }))
   expect(localeMetadataProblems(root)).toEqual([])
 })
 
@@ -127,29 +107,9 @@ it('excludes packages formally classified as test helpers', () => {
   expect(localeMetadataProblems(root)).toEqual([])
 })
 
-it.each(['es', 'fr', 'de', 'ru', 'pt'])('rejects missing %s metadata', (language) => {
-  const root = fixture()
-  rmSync(join(root, `packages/demo/plugin/locale/${language}.json`))
-  expect(localeMetadataProblems(root).join('\n')).toContain(`${language}.json`)
-})
-
-it.each(['es', 'fr', 'de', 'ru', 'pt'])('rejects untranslated Chinese descriptions in %s metadata', (language) => {
-  const root = fixture()
-  writeFileSync(join(root, 'packages/demo/plugin/locale/en.json'), JSON.stringify({ meta: { title: 'Name {name}', description: 'English description.' } }))
-  writeFileSync(join(root, `packages/demo/plugin/locale/${language}.json`), JSON.stringify({ meta: { title: 'Name {name}', description: '描述' } }))
-  expect(localeMetadataProblems(root).join('\n')).toContain(`${language}.json: meta.description contains untranslated source text`)
-})
-
-it.each(['es', 'fr', 'de', 'ru', 'pt'])('rejects copied English descriptions in %s metadata', (language) => {
-  const root = fixture()
-  writeFileSync(join(root, 'packages/demo/plugin/locale/en.json'), JSON.stringify({ meta: { title: 'Name {name}', description: 'English description.' } }))
-  writeFileSync(join(root, `packages/demo/plugin/locale/${language}.json`), JSON.stringify({ meta: { title: 'Name {name}', description: 'English description.' } }))
-  expect(localeMetadataProblems(root).join('\n')).toContain(`${language}.json: meta.description contains untranslated source text`)
-})
-
 it.each(['\u200b', '\ufeff', String.raw`\u200b`, String.raw`\ufeff`])('rejects invisible characters in JSON resources', (character) => {
   const root = fixture()
-  const file = join(root, 'packages/demo/plugin/locale/es.json')
-  writeFileSync(file, readFileSync(file, 'utf8').replace('Localized description.', `Localized${character} description.`))
+  const file = join(root, 'packages/demo/plugin/locale/en.json')
+  writeFileSync(file, readFileSync(file, 'utf8').replace('Name {name}', `Localized${character} description.`))
   expect(localeMetadataProblems(root).join('\n')).toContain('invisible locale character')
 })

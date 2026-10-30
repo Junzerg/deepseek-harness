@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/** A page whose Peer may not list plugin bundles still boots, and the More menus keep their other rows. */
+/** A page without plugin navigation keeps the remaining entry customization rows. */
 import { expect } from 'vitest'
 import { createClientTest, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
 

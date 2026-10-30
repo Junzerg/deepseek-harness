@@ -853,7 +853,8 @@ export interface RouteCatalog {
  * `providers: { deepseek: { apiKeyEnv: … } }` profile working untouched.
  * @param request - the route-level catalog facts.
  * @param validation - strict writes reject every error; deferred reads retain model diagnostics.
- * @returns the materialized models and the explicitly configured request caps.
+ * @returns the materialized models and request caps. An explicit empty list with an API and base URL
+ * registers an empty custom route for a catalog populated after authentication.
  */
 export function resolveRouteModels(
   request: RouteCatalogRequest,
@@ -898,7 +899,7 @@ export function resolveRouteModels(
   const entries: readonly PiAiModelProfile[] = configured.length > 0
     ? configured
     : [...defaults.values()].map(model => ({ id: model.id, ...overrides[model.id] }))
-  if (entries.length === 0) {
+  if (entries.length === 0 && !(request.models?.length === 0 && request.api !== undefined && request.baseURL !== undefined)) {
     invalid(provider, 'resolves no models; the installed catalog does not describe this route, so its models'
       + ' must be listed in configuration')
   }

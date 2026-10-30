@@ -15,6 +15,8 @@ import css from './AccountSection.module.css'
 
 /** Safe account snapshot shared by the settings page and launcher. */
 export interface AccountSnapshot {
+  /** Desktop hides the consumer Platform UI while keeping account operations available. */
+  platformAvailable?: boolean
   /** Server-authored notices in front-to-back order, absent when none are available. */
   notices?: readonly BonusNotice[]
 
@@ -67,6 +69,8 @@ export interface AccountSectionInjected {
    * @returns after the account queries settle; image loading completes independently.
    */
   refreshAccount: () => Promise<void>
+  /** Feedback destination selected by the deployment. */
+  feedbackDestination: 'questionnaire' | 'internal-team'
   /** Open the external support questionnaire with the account, build and environment sampled by this click. */
   contactUs: () => void
   /** Open or dismiss the login dialog. */
@@ -91,7 +95,7 @@ export type AccountSectionProps =
   PropsRuntime<'settings.section'> & PropsLocale<'settings.account'> & InjectFace<AccountSectionInjected>
 /** @param props - localized actions, account subscription, and the shared Platform page channel. @returns account settings UI. */
 export function AccountSection({ t, useAccount, useTheme, start, cancel, openPlatformPage, avatarFailed }: AccountSectionProps) {
-  const { view: state, details, avatar, failed: streamFailed } = useAccount(value => value)
+  const { view: state, details, avatar, failed: streamFailed, platformAvailable } = useAccount(value => value)
   const colorScheme = useTheme(snapshot => snapshot.active.colorScheme)
   // The shared host owns the native view; this page holds only its own request,
   // and only while it is the latest owner.
@@ -172,7 +176,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
             <span className={css.status} role="status">{status}</span>
           </div>
         </div>
-        {signedIn && <a className={css.accountInfo} href={new URL('/', state.links.usageUrl).href} target="_blank" rel="noopener noreferrer">
+        {signedIn && platformAvailable !== false && <a className={css.accountInfo} href={new URL('/', state.links.usageUrl).href} target="_blank" rel="noopener noreferrer">
           {t('accountInfo')}<IconRightUpOutlineRegular size={12} />
         </a>}
       </div>
@@ -184,7 +188,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
         <Button variant="outline" disabled={busy || attempt.phase === 'committing'}
           onClick={() => { void run(() => cancel(attempt.id)) }}>{t('cancel')}</Button>
       </div>}
-      <div className={css.balanceCard}>
+      {platformAvailable !== false && <div className={css.balanceCard}>
         <div className={css.row}>
           <span>{t('balance')}</span>
           {signedIn && wallets !== undefined && wallets.length > 0
@@ -220,7 +224,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
               onClick={(event) => { if (openPlatformPage !== undefined && signedIn) { event.preventDefault(); showPage(openPlatformPage, 'top-up') } }}>{t('topUp')}</a>
           </div>
         </div>
-      </div>
+      </div>}
     </section>
   )
 }

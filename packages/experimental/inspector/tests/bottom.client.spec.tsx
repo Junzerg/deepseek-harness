@@ -189,15 +189,14 @@ it('removes the command and frame on unload and starts a fresh closed panel on r
   expect(body.view.getByTitle('NodeJS inspector')).not.toBe(frame)
 })
 
-it('uses Japanese panel and shortcut labels through the production registration', async () => {
+it('uses Chinese panel and shortcut labels through the production registration', async () => {
   const { runtime, locale, body } = await setup()
   act(() => {
-    locale.addLanguage({ id: 'ja', label: '日本語', fallback: 'en' })
-    locale.setLocale('ja')
+    locale.setLocale('zh')
   })
   press()
-  expect(body.view.getByRole('button', { name: '折りたたむ' })).toBeTruthy()
-  expect(body.view.getByTitle('NodeJS インスペクター')).toBeTruthy()
-  expect(body.container.querySelector('section')?.getAttribute('aria-label')).toBe('NodeJS インスペクター')
-  expect(runtime.ctx.shortcuts.catalog.getSnapshot().find(row => row.id === ID)?.label).toBe('NodeJS インスペクターの表示切り替え')
+  expect(body.view.getByRole('button', { name: '收起' })).toBeTruthy()
+  expect(body.view.getByTitle('NodeJS 诊断')).toBeTruthy()
+  expect(body.container.querySelector('section')?.getAttribute('aria-label')).toBe('NodeJS 诊断')
+  expect(runtime.ctx.shortcuts.catalog.getSnapshot().find(row => row.id === ID)?.label).toBe('展开或收起 NodeJS 诊断')
 })

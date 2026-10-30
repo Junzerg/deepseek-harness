@@ -1,15 +1,16 @@
 /** Sidebar account launcher and locally authoritative sign-out action. */
 import { useEffect, useRef, useState } from 'react'
 import {
-  Toast, Menu, IconEllipsisOutlineMedium, IconPaperPlaneOutlineMedium, IconSettingsOutlineMedium, IconUserOutlineMedium,
+  Toast, Menu, Tooltip, IconPaperPlaneOutlineMedium, IconPaperPlaneOutlineRegular,
+  IconSettingsOutlineMedium, IconSettingsOutlineRegular, IconUserOutlineMedium,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AccountSectionInjected } from './AccountSection.tsx'
 import { SignOutDialog } from './SignOutDialog.tsx'
 import { SignInDialog } from './SignInDialog.tsx'
 import { LogoutIcon } from './LogoutIcon.tsx'
-import { AccountAvatar } from './AccountAvatar.tsx'
 import { AccountNoticeStack } from './AccountNotice.tsx'
+import { ContactDialog } from './ContactDialog.tsx'
 import css from './AccountMenu.module.css'
 
 /** Account launcher composed by the settings shell. */
@@ -22,7 +23,7 @@ export type AccountMenuProps = PropsRuntime<'settings.launcher'> & PropsLocale<'
 export function AccountMenu({
   subscribeSessionExpired, subscribeModelSignInRequired, wide, settingsShortcut, openSettings, openOnboarding, settingsOpen,
   useAccount, useTheme, signOut, hasRunningAccountTasks, refreshAccount, bonusNoticeShown, bonusNoticeDismissed,
-  contactUs, showLogin, start, cancel, avatarFailed, t,
+  feedbackDestination, contactUs, showLogin, start, cancel, t,
 }: AccountMenuProps) {
   const anchor = useRef<HTMLDivElement>(null)
   // The launcher outlives the panel, so a false-to-true edge is one Settings entry:
@@ -42,9 +43,12 @@ export function AccountMenu({
   const profile = account.details?.profile
   const label = profile === undefined ? null : profile.status === 'ready'
     ? profile.value.name ?? profile.value.contact ?? t('signedIn') : t('signedIn')
+  const loginName = profile?.status === 'ready' ? profile.value.name?.trim() || profile.value.contact?.trim() : undefined
+  const initial = Array.from(loginName ?? '')[0]
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const [busy, setBusy] = useState(false)
+  const [contactVisible, setContactVisible] = useState(false)
   const [signOutImpact, setSignOutImpact] = useState<boolean | 'unknown'>()
   const requestSignOut = async () => {
     setBusy(true)
@@ -54,6 +58,11 @@ export function AccountMenu({
   }
   // The plugin's start publishes `loginFailed` before it rejects, so the dialog owns the report.
   const beginSignIn = (): void => { setOpen(false); void start().catch(() => undefined) }
+  const openFeedback = (): void => {
+    setOpen(false)
+    if (feedbackDestination === 'internal-team') setContactVisible(true)
+    else contactUs()
+  }
   return <div ref={anchor} className={css.root}>
     {signInNotice > 0 && <Toast key={signInNotice} text={t('modelSignInRequired')} onDone={() => { setSignInNotice(0) }} />}
     {expiryNotice && <Toast text={t('sessionExpired')} onDone={() => { setExpiryNotice(false) }} />}
@@ -62,15 +71,12 @@ export function AccountMenu({
       anchor={anchor} title={t('bonusNoticeTitle')} closeLabel={t('close')}
       onShown={bonusNoticeShown} onDismiss={bonusNoticeDismissed} />}
     <Menu open={open} side="top" portal autoFocus className={css.anchor} listClassName={signedIn ? undefined : css.signedOutMenu}
-      anchor={<button ref={trigger} type="button" className={css.trigger} data-collapsed={!wide} data-signed-out={!signedIn} aria-label={t('menu')}
-        aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen(value => !value) }}>
-        {signedIn
-          ? <span className={css.avatar} data-avatar-status={account.avatar?.status}>
-            <AccountAvatar avatar={account.avatar} avatarFailed={avatarFailed} />
-          </span>
-          : <IconEllipsisOutlineMedium size={14} />}
-        {wide && <span className={css.label}>{signedIn ? label : t('more')}</span>}
-      </button>}
+      anchor={<Tooltip label={signedIn ? label ?? t('signedIn') : t('signIn')} side="top" disabled={open}>
+        <button ref={trigger} type="button" className={css.trigger} data-signed-out={!signedIn} aria-label={t('menu')}
+          aria-haspopup="menu" aria-expanded={open} onClick={() => { setOpen(value => !value) }}>
+          <span aria-hidden="true">{signedIn && initial !== undefined ? initial : <IconUserOutlineMedium size={16} />}</span>
+        </button>
+      </Tooltip>}
       items={[
         { id: 'settings', label: t('settings'), icon: <IconSettingsOutlineMedium size={16} />,
           ...(settingsShortcut === undefined ? {} : { shortcut: settingsShortcut }) },
@@ -81,10 +87,32 @@ export function AccountMenu({
       onClose={() => { setOpen(false) }}
       onSelect={(id) => {
         if (id === 'settings') { setOpen(false); trigger.current?.focus(); openSettings() }
-        else if (id === 'contact') { setOpen(false); contactUs() }
+        else if (id === 'contact') openFeedback()
         else if (id === 'signin') beginSignIn()
         else void requestSignOut()
       }} />
+    {wide && <div className={css.footerActions}>
+      <Tooltip label={t('notifications')} side="top">
+        <button type="button" className={css.iconButton} aria-label={t('notifications')}>
+          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6.5 9.5a5.5 5.5 0 1 1 11 0c0 4.5 1.8 5.6 1.8 5.6H4.7s1.8-1.1 1.8-5.6M10 18.6a2 2 0 0 0 4 0" />
+          </svg>
+        </button>
+      </Tooltip>
+      <Tooltip label={t('contactUs')} side="top">
+        <button type="button" className={css.iconButton} aria-label={t('contactUs')} onClick={openFeedback}>
+          <IconPaperPlaneOutlineRegular size={15} />
+        </button>
+      </Tooltip>
+      <Tooltip label={t('settings')} shortcutKeys={settingsShortcut?.keys} side="top">
+        <button type="button" className={css.iconButton} aria-label={t('settings')}
+          aria-keyshortcuts={settingsShortcut?.aria} aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={openSettings}>
+          <IconSettingsOutlineRegular size={15} />
+        </button>
+      </Tooltip>
+    </div>}
+    {contactVisible && <ContactDialog close={() => { setContactVisible(false) }} t={t} />}
     {account.loginVisible && !account.onboarding && <SignInDialog account={account} colorScheme={colorScheme}
       start={start} cancel={cancel} t={t}
       close={() => { showLogin(false) }} useApiKey={() => { showLogin(false); openOnboarding('deepseek-official') }} />}

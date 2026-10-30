@@ -946,7 +946,7 @@ describe('web e2e: resident question composer round trip', () => {
     const outcome = asked.then(value => ({ value }), (error: unknown) => ({ error }))
 
     const composer = page.locator('[data-question-key]')
-    const frame = page.locator('[style*="grid-template-columns"]').first()
+    const frame = page.locator('[style*="--dsh-sidebar-track-width"]').first()
     const original = page.viewportSize() ?? { width: 1680, height: 1000 }
     let bodyCompleted = false
     try {

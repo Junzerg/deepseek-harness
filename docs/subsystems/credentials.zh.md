@@ -316,6 +316,13 @@ abstract ackBonusNotified(accountId: AccountUserId, orderId: AccountBonusOrderId
 abstract startSignIn(client: AccountClientMetadata, callbackOrigin: string, loginSource: 'web' | 'desktop'): Promise<AccountView>
 
 /**
+ * Complete manual company-key entry through the same model configuration used after IAM login.
+ * @param apiKey - user-supplied company gateway key; never returned to clients.
+ * @returns after model discovery, default selection and credential persistence succeed.
+ */
+abstract completeApiKeySignIn(apiKey: string): Promise<void>
+
+/**
  * Cancel only the named attempt; committing attempts settle before returning.
  * @param id - attempt identity from this Host.
  * @returns state after cancellation or an already-started commit.
@@ -323,7 +330,7 @@ abstract startSignIn(client: AccountClientMetadata, callbackOrigin: string, logi
 abstract cancelSignIn(id: SignInAttemptId): Promise<AccountView>
 
 /**
- * Remove the local grant while retaining API keys; the provider revokes it in the background.
+ * Remove the local grant and provider-owned synchronized credentials; independent API keys remain.
  * @param client - identity of the requesting UI, captured for the background revocation retries.
  * @returns the signed-out state after local removal; remote failures never restore the grant.
  */

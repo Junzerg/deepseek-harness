@@ -59,6 +59,10 @@
       - button "取消"
       - button "保存"
     - listitem:
+      - text: HaierCash 自定义
+      - img "API 密钥缺失"
+      - button "编辑 HaierCash (company-gateway)": 编辑
+    - listitem:
       - text: Acme 网关 自定义
       - button "编辑 Acme 网关 (acme-gateway)": 编辑
       - button "删除 Acme 网关 (acme-gateway)": 删除

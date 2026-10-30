@@ -38,31 +38,23 @@ async function sidebarTrack(page: Page): Promise<number> {
   })
 }
 
-/** AppFrame is the only product element with an inline grid track template. */
+/** AppFrame is the only product element with an sidebar track width property. */
 function appFrame(page: Page) {
-  return page.locator('[style*="grid-template-columns"]').first()
+  return page.locator('[style*="--dsh-sidebar-track-width"]').first()
 }
 
-/** Render the two column-resize handles without platform-dependent coordinates. */
+/** Record fixed outer widths and the absence of resize affordances. */
 async function handleSnapshot(page: Page): Promise<string> {
-  const handles = await page.locator('[class*="handle"]').evaluateAll(elements =>
-    elements.map(element => ({
-      side: element.getAttribute('data-side'),
-      cursor: getComputedStyle(element).cursor,
-      pillGenerated: getComputedStyle(element, '::after').content !== 'none',
-    })))
+  const frame = appFrame(page)
+  const sidebarWidth = await sidebarTrack(page)
+  const panelWidth = await frame.locator('[data-sidebar-right-panel]').evaluate(element => getComputedStyle(element).width)
+  const handles = await frame.locator('[data-side="sidebar"], [data-side="rightbar"]').count()
   return [
-    '# AppFrame drag handles',
-    '',
-    ...handles.flatMap(handle => [
-      `## ${handle.side}`,
-      '',
-      '- hit strip present: true',
-      `- cursor: ${handle.cursor}`,
-      `- pill generated: ${String(handle.pillGenerated)}`,
-      '',
-    ]),
-  ].join('\n').trimEnd()
+    '# AppFrame outer columns', '',
+    `- sidebar width: ${sidebarWidth}px`,
+    `- normal right panel width: ${panelWidth}`,
+    `- column resize handles: ${handles}`,
+  ].join('\n')
 }
 
 /** Rendered frame tracks, rounded only to remove browser subpixel allocation. */
@@ -91,10 +83,9 @@ async function paneSnapshot(page: Page) {
 
 /** Product-visible geometry, pane state, and expanded Files directories at a settled checkpoint. */
 async function sidebarSnapshot(page: Page) {
-  // A toggle holds data-animating until transitionend or its 600ms fallback
-  // (ui-layout AppFrame); computed transition values are stable only after it
-  // drops, so capturing earlier races the settle window.
-  await expect.poll(() => appFrame(page).evaluate(frame => frame.hasAttribute('data-animating'))).toBe(false)
+  await appFrame(page).evaluate(async (frame) => {
+    await Promise.allSettled(frame.getAnimations().map(animation => animation.finished))
+  })
   const geometry = await appFrame(page).evaluate((frame) => {
     const panel = frame.querySelector<HTMLElement>('[data-sidebar-right-panel]')
     if (panel === null) throw new Error('Sidebar panel is not mounted')
@@ -118,20 +109,6 @@ async function sidebarSnapshot(page: Page) {
     }
   })
   return { ...geometry, panes: await paneSnapshot(page) }
-}
-
-/** The native pointer gesture used for the left column's width preference. */
-async function dragSidebar(page: Page, target: number): Promise<void> {
-  const grip = await page.locator('[data-side="sidebar"]').boundingBox()
-  if (grip === null) throw new Error('Sidebar resize handle is not rendered')
-  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
-  await page.mouse.down()
-  try {
-    await page.mouse.move(target, grip.y + grip.height / 2, { steps: 6 })
-  } finally {
-    await page.mouse.up()
-  }
-  await expect.poll(() => sidebarTrack(page)).toBe(target)
 }
 
 describe.skipIf(MODE === 'record')('web e2e: details panel follows the current Session lifecycle', () => {
@@ -164,11 +141,12 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     }
   })
 
-  it('retains each Session sidebar and applies normal, fullscreen, and capacity-close geometry', async () => {
+  it('retains each Session sidebar and applies fixed columns, overlays, and explicit fullscreen geometry', async () => {
     onTestFailed(async () => {
       await mkdir(SHOT_DIR, { recursive: true })
       await saveFailureShot(page, `screenshots/0907-sidebar-rules/details-session-lifecycle-${MODE}-${process.pid}`)
     })
+    await mkdir(SHOT_DIR, { recursive: true })
     const blankColumn = page.locator('[data-rightbar-col]')
     const workspace = join(scaffold.workspaceCwd, 'workspace')
     await writeFile(join(workspace, 'before-chat.md'), '# Before the first message\n\nWorkspace preview is available.\n')
@@ -178,7 +156,7 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await blankColumn.locator('[data-sidebar-right-guide-entry="files"]').click()
     await blankColumn.locator('[data-files-entry="file"]').getByRole('button', { name: 'before-chat.md', exact: true }).click()
     await blankColumn.getByText('Workspace preview is available.', { exact: true }).waitFor()
-    await page.getByText('Into the Unknown', { exact: false }).waitFor()
+    await page.getByText('Welcome to Lingxi Office', { exact: false }).waitFor()
     const blankPanes = await paneSnapshot(page)
     expect(blankPanes.map(pane => pane.tabs.map(tab => tab.title))).toEqual([['Files', 'before-chat.md']])
     await page.screenshot({ path: join(SHOT_DIR, `blank-preview-${MODE}-${process.pid}.png`), fullPage: true })
@@ -188,21 +166,20 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
       await blankColumn.locator('[data-sidebar-right-toggle]').click()
       await blankColumn.locator('[data-dockkit-pane]').first().waitFor({ state: 'hidden' })
       await page.setViewportSize({ width: 767, height: blankViewport.height })
-      await expect.poll(() => columns(page)).toEqual([56, 711, 0])
+      await expect.poll(() => columns(page)).toEqual([236, 531, 0])
       await page.locator('[data-sidebar-right-expand]').click()
-      // The fullscreen shell keeps its viewport box while its docked content closes.
       await expect.poll(() => blankColumn.locator('[data-sidebar-right-open]').count()).toBe(1)
       await expect.poll(() => blankColumn.locator('[data-dockkit-host="dock"]:not([hidden])').evaluate(element => getComputedStyle(element).transform))
         .toBe('none')
       await expect.poll(() => blankColumn.locator('[data-sidebar-right-panel]').boundingBox())
-        .toEqual({ x: 0, y: 0, width: 767, height: blankViewport.height })
+        .toEqual({ x: 431, y: 0, width: 336, height: blankViewport.height })
       await blankColumn.getByText('Workspace preview is available.', { exact: true }).waitFor()
       await blankColumn.locator('[data-sidebar-right-toggle]').click()
       await blankColumn.locator('[data-dockkit-pane]').first().waitFor({ state: 'hidden' })
     } finally {
       await page.setViewportSize(blankViewport)
     }
-    await expect.poll(() => columns(page)).toEqual([280, blankViewport.width - 280, 0])
+    await expect.poll(() => columns(page)).toEqual([236, blankViewport.width - 236, 0])
     await page.locator('[data-sidebar-right-expand]').click()
     await blankColumn.locator('[data-dockkit-add-tab]').click()
     await blankColumn.locator('[data-sidebar-right-guide-entry="terminal"]')
@@ -230,7 +207,7 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
       '- No selected Session: expand control absent',
       '- Selected workspace before first message: expand control visible',
       '- Files: before-chat.md opens as a Markdown preview',
-      '- Narrow viewport: reopened preview fills the viewport',
+      '- Narrow viewport: reopened preview overlays the main column at 336px',
       '- Terminal: writes a file in the selected workspace before any user message or turn', '',
       `\`\`\`json\n${JSON.stringify(await paneSnapshot(page), null, 2)}\n\`\`\``,
     ].join('\n'), MODE)
@@ -253,16 +230,8 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
     await compareOrRefreshGolden(HANDLES_EXPECTED, await handleSnapshot(page), MODE)
 
-    const sidebarBefore = await sidebarTrack(page)
-    const sidebarHandle = page.locator('[data-side="sidebar"]')
-    const sidebarBox = await sidebarHandle.boundingBox()
-    expect(sidebarBox).not.toBeNull()
-    const dragStartX = sidebarBox!.x + sidebarBox!.width / 2
-    await page.mouse.move(dragStartX, sidebarBox!.y + 200)
-    await page.mouse.down()
-    await page.mouse.move(dragStartX + 70, sidebarBox!.y + 200, { steps: 6 })
-    await page.mouse.up()
-    await expect.poll(() => sidebarTrack(page), { timeout: 5_000 }).toBe(sidebarBefore + 70)
+    expect(await sidebarTrack(page)).toBe(236)
+    expect(await page.locator('[data-side="sidebar"], [data-side="rightbar"]').count()).toBe(0)
 
     const warningStart = tripwire.warnings.length
     await page.reload({ waitUntil: 'load' })
@@ -273,7 +242,7 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
 
     await page.getByRole('button', { name: /^(?:New session|新.*会话)$/ }).last().click()
-    await page.getByText('Into the Unknown', { exact: false }).waitFor({ timeout: 15_000 })
+    await page.getByText('Welcome to Lingxi Office', { exact: false }).waitFor({ timeout: 15_000 })
     await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
     expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
 
@@ -299,8 +268,8 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     const column = page.locator('[data-rightbar-col]')
     const panel = column.locator('[data-sidebar-right-panel]')
     const panes = column.locator('[data-dockkit-pane]')
-    const normalWidth = Math.round(viewport.width * 0.45)
-    const normalColumns = [280, viewport.width - 280 - normalWidth, normalWidth]
+    const normalWidth = 336
+    const normalColumns = [236, viewport.width - 236 - normalWidth, normalWidth]
     const checkpoints: string[] = ['# Recorded-session Sidebar states']
     const checkpoint = async (label: string): Promise<void> => {
       checkpoints.push(`## ${label}\n\n\`\`\`json\n${JSON.stringify(await sidebarSnapshot(page), null, 2)}\n\`\`\``)
@@ -334,12 +303,13 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await column.locator('[data-sidebar-right-guide-entry="files"]').click()
     // Pane borders stay inside the grid width; the shared panel owns no border.
     await expect.poll(() => sidebarSnapshot(page), { timeout: 5_000 })
-      .toMatchObject({ mode: 'push', panelContentWidth: normalWidth, panelOuterWidth: normalWidth, resizeHandleWidth: 8 })
+      .toMatchObject({ mode: 'push', panelContentWidth: normalWidth, panelOuterWidth: normalWidth, resizeHandleWidth: 0 })
     await expect.poll(async () => ({
       filesVisible: await column.locator('[data-files-state="tree"]').isVisible(),
       errors: tripwire.pageErrors,
     })).toEqual({ filesVisible: true, errors: [] })
     await column.locator('[data-dockkit-add-tab]').click()
+    await column.locator('[data-sidebar-right-mode="fullscreen"]').click()
     const split = column.locator('[data-dockkit-split-button]').first()
     await expect.poll(() => split.isDisabled()).toBe(false)
     await split.click()
@@ -349,6 +319,8 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await expect.poll(() => paneAt(column, 0).locator('[data-files-state="tree"]').count()).toBe(1)
     const retainedA = await paneSnapshot(page)
     expect(retainedA.map(pane => pane.tabs.map(tab => tab.title))).toEqual([['Files', 'Start'], ['Files']])
+    await column.locator('[data-sidebar-right-mode="push"]').click()
+    await expect.poll(() => columns(page)).toEqual(normalColumns)
     await checkpoint('A normal: two panes')
 
     await column.locator('[data-sidebar-right-mode="fullscreen"]').click()
@@ -408,34 +380,23 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await checkpoint('A restored: expanded normal panel')
 
     try {
-      await page.setViewportSize({ width: 1024, height: viewport.height })
-      // Frame measurement and the grid transition can finish after setViewportSize returns.
-      await expect.poll(() => columns(page), { timeout: 5_000 }).toEqual([280, 400, 344])
-      await dragSidebar(page, 420)
-      await expect.poll(() => columns(page)).toEqual([420, 604, 0])
-      expect(await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-      expect(await paneSnapshot(page)).toEqual(retainedA)
-      await checkpoint('A capacity-closed: wide left preference protected')
-      await page.setViewportSize(viewport)
-      await expect.poll(() => columns(page)).toEqual([420, viewport.width - 420, 0])
-      expect(await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-      await checkpoint('A widened: remains closed')
-
-      await page.locator('[data-sidebar-right-expand]').click()
-      await expect.poll(() => columns(page)).toEqual([420, viewport.width - 420 - normalWidth, normalWidth])
-      await page.setViewportSize({ width: 767, height: viewport.height })
-      await expect.poll(() => panel.boundingBox()).toEqual({ x: 0, y: 0, width: 767, height: viewport.height })
-      await expect.poll(() => columns(page)).toEqual([56, 711, 0])
-      expect(await sidebarSnapshot(page)).toMatchObject({ mode: 'fullscreen', resizeHandleWidth: 0, coversViewport: true })
-      await checkpoint('A automatic fullscreen at 767px')
-      await column.locator('[data-sidebar-right-mode="push"]').click()
+      for (const width of [1181, 1180, 1024, 767, 390]) {
+        await page.setViewportSize({ width, height: viewport.height })
+        const track = width > 1180 ? 336 : 0
+        await expect.poll(() => columns(page)).toEqual([236, width - 236 - track, track])
+        await expect.poll(() => panel.boundingBox()).toEqual({ x: width - 336, y: 0, width: 336, height: viewport.height })
+        expect(await panel.getAttribute('data-sidebar-right-panel')).toBe('push')
+        expect(await column.locator('[data-sidebar-right-open]').count()).toBe(1)
+        expect(await paneSnapshot(page)).toEqual(retainedA)
+        expect(await page.locator('[data-side="sidebar"], [data-side="rightbar"]').count()).toBe(0)
+        await checkpoint(`A fixed panel at ${width}px`)
+        await page.screenshot({ path: join(SHOT_DIR, `fixed-${width}-${MODE}-${process.pid}.png`), fullPage: true })
+      }
+      await column.locator('[data-sidebar-right-toggle]').click()
       await expect.poll(() => column.locator('[data-sidebar-right-open]').count()).toBe(0)
       await page.setViewportSize(viewport)
-      await expect.poll(() => columns(page)).toEqual([420, viewport.width - 420, 0])
-      expect(await paneSnapshot(page)).toEqual(retainedA)
-      expect(await panel.getAttribute('data-sidebar-right-panel')).toBe('push')
-      expect(await column.locator('[data-sidebar-right-open]').count()).toBe(0)
-      await checkpoint('A automatic fullscreen exited: widening does not reopen')
+      await expect.poll(() => columns(page)).toEqual([236, viewport.width - 236, 0])
+      await checkpoint('A closed: widening preserves the closed state')
     } finally {
       await page.setViewportSize(viewport)
     }

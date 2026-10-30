@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import { type ContactConfig, ContactConfigFields, CONTACT_CONFIG_GLOBAL } from './contact-config.ts'
 import z from '@deepseek-ai/schemastery'
 import { OnboardingSettingsFields, type OnboardingStep, type OnboardingPurpose, type OnboardingProcess } from './onboarding-settings.ts'
-/** Public contact options and live device-local onboarding progress. */
+/** Public feedback options and live device-local onboarding progress. */
 export interface Config extends ContactConfig {
   /** Onboarding progress format version. */
   version: Volatile<1>
@@ -25,6 +25,7 @@ export interface Config extends ContactConfig {
 
 /** Configuration projected through the account plugin's shared form. */
 export const Config = z.object({
+  feedbackDestination: ContactConfigFields.feedbackDestination,
   contactFormUrl: ContactConfigFields.contactFormUrl,
   contactSource: ContactConfigFields.contactSource,
   bonusAckRetryDelayMs: ContactConfigFields.bonusAckRetryDelayMs,
@@ -39,7 +40,7 @@ export const Config = z.object({
 })
 
 /**
- * Publish public questionnaire options before browser plugins activate.
+ * Publish public feedback options before browser plugins activate.
  * @param ctx - Host context collecting page initialization data.
  * @param config - validated deployment options.
  */
@@ -49,6 +50,7 @@ export function apply(ctx: Context, config: Config): void {
   })
   ctx.on('webserver/index-inject', (table) => {
     table.push({ kind: 'global', name: CONTACT_CONFIG_GLOBAL, value: {
+      feedbackDestination: config.feedbackDestination,
       contactFormUrl: config.contactFormUrl, contactSource: config.contactSource,
       bonusAckRetryDelayMs: config.bonusAckRetryDelayMs, bonusAckRetryMaxDelayMs: config.bonusAckRetryMaxDelayMs,
     } satisfies ContactConfig })

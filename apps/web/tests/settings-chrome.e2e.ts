@@ -68,6 +68,19 @@ describe('web e2e: settings modal and General preferences', () => {
     }
   })
 
+  it('shows the internal feedback contact without opening a link', async () => {
+    onTestFailed(() => saveSettingsFailureShot(page, 'internal-feedback'))
+    const pageCount = page.context().pages().length
+    await page.getByRole('button', { name: '账号菜单', exact: true }).click()
+    await page.getByRole('menuitem', { name: '意见反馈', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '意见反馈', exact: true })
+    await dialog.waitFor()
+    await dialog.getByText('请联系 AI 工程团队', { exact: true }).waitFor()
+    expect(page.context().pages()).toHaveLength(pageCount)
+    await page.keyboard.press('Escape')
+    await dialog.waitFor({ state: 'detached' })
+  })
+
   it('opens the settings dialog, switches sections, and closes by every path', async () => {
     onTestFailed(() => saveSettingsFailureShot(page, 'settings-shell'))
     onTestFinished(async () => {

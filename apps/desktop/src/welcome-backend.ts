@@ -24,7 +24,7 @@ export interface DesktopWelcomeBackend {
   /** @returns The saved UI language without account or provider requests. */
   readLocalePreference(): Promise<string | null>
   /**
-   * @param apiKey - User-entered official provider key.
+   * @param apiKey - User-entered provider key.
    * @returns A safe write outcome without provider diagnostics.
    */
   save(apiKey: string): Promise<{ ok: boolean }>
@@ -72,6 +72,11 @@ export async function connectDesktopWelcome(
   const settingsAndReference = async () => {
     const settings = await invoke({ namespace: 'settings', method: 'describe', args: {} })
     if (!record(settings) || !Array.isArray(settings.namespaces)) throw new Error('desktop welcome: missing settings namespaces')
+    const company: unknown = settings.namespaces.find((item: unknown) => record(item) && item.ns === 'llm-pi-ai')
+    if (record(company) && record(company.value) && record(company.value.providers)) {
+      const gateway = company.value.providers['company-gateway']
+      if (record(gateway) && typeof gateway.apiKeyEnv === 'string') return { settings: { namespaces: settings.namespaces }, ref: gateway.apiKeyEnv, company: true }
+    }
     const official: unknown = settings.namespaces.find((item: unknown) => record(item) && item.ns === 'llm-deepseek')
     if (official === undefined) return { settings: { namespaces: settings.namespaces }, ref: undefined }
     if (!record(official) || !record(official.value) || typeof official.value.apiKeyEnv !== 'string') {
@@ -137,9 +142,10 @@ export async function connectDesktopWelcome(
     async save(apiKey) {
       if (!/^[\x21-\x7e]+$/.test(apiKey)) return { ok: false }
       try {
-        const { ref } = await settingsAndReference()
+        const { ref, company } = await settingsAndReference()
         if (ref === undefined) return { ok: false }
-        await invoke({ namespace: 'credentials', method: 'set', args: { ref, value: apiKey } })
+        if (company) await invoke({ namespace: 'account', method: 'completeApiKeySignIn', args: { apiKey } })
+        else await invoke({ namespace: 'credentials', method: 'set', args: { ref, value: apiKey } })
         return { ok: true }
       } catch {
         // Provider diagnostics may contain credentials; the native form owns failure copy.

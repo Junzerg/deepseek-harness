@@ -13,6 +13,10 @@ export type EntryRegion = 'sidebar' | 'conversation' | 'rightbar'
 export interface EntryMenuInjected {
   /** Region of this registration; selects analytics attributes and the Creator prompt. */
   readonly region: EntryRegion
+  /** Whether this deployment exposes external plugin discovery. */
+  readonly showBrowsePlugins: boolean
+  /** Whether this deployment exposes plugin authoring. */
+  readonly showCreatePlugin: boolean
   readonly hooks: {
     /** Whether the Plugins page navigation service is present; the discovery row shows only while it is. */
     readonly pluginNavigation: HostObservable<boolean>
@@ -33,10 +37,11 @@ type EntryMenuContentProps = PropsRuntime<'sidebar.panellist.actions'>
  * @returns Menu rows for the region's More menu.
  */
 export function EntryMenuContent({
-  entries, onOpen, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, t,
+  entries, onOpen, region, onDismiss, showBrowsePlugins, showCreatePlugin,
+  usePluginNavigation, browsePlugins, createPlugin, t,
 }: EntryMenuContentProps) {
   const moreEntries = region === 'conversation' ? entries : []
-  const browsable = usePluginNavigation(present => present)
+  const browsable = usePluginNavigation(present => showBrowsePlugins && present)
   return <>
     {moreEntries.map(entry => <MenuItemButton key={entry.id} current={entry.active === true}
       onSelect={() => { onDismiss(); onOpen(entry.id) }}>
@@ -49,9 +54,10 @@ export function EntryMenuContent({
       onSelect={() => { onDismiss(); browsePlugins() }}>
       {t('install')}
     </MenuItemButton>}
-    <MenuItemButton icon={<IconPlusOutlineRegular size={16} />} separatorBefore={!browsable && moreEntries.length > 0}
+    {showCreatePlugin && <MenuItemButton icon={<IconPlusOutlineRegular size={16} />}
+      separatorBefore={!browsable && moreEntries.length > 0}
       onSelect={() => { onDismiss(); createPlugin() }}>
       {t('create')}
-    </MenuItemButton>
+    </MenuItemButton>}
   </>
 }

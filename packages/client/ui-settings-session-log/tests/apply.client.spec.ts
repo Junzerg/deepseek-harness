@@ -57,3 +57,30 @@ it('adds the last General row only while served and removes all contributions on
     await ctx.fiber.dispose()
   }
 })
+
+it('hides the upload entry while retaining its settings and notification host', async () => {
+  vi.stubGlobal('dshDesktop', {})
+  const ctx = new Context()
+  try {
+    await ctx.plugin(SlotRegistry).await()
+    ctx.provide('locale', new LocaleRuntime(ctx))
+    new TestRemote(ctx, { settings: { describe: async () => ({ ok: true, value: {
+      writable: true, hasDocument: true, namespaces: [{ ns: 'session-log-deepseek', schema: {},
+        value: { enabled: true }, applies: 'live', secrets: [], revision: 1 }],
+    } }) } })
+    await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
+    const slots = ctx.get('slots') as SlotRegistry
+    slots.register({ name: 'root', children: {
+      'settings.general.item': { kind: 'list', scope: 'root' },
+      'shell.overlay': { kind: 'list', scope: 'root' },
+    } } as never, () => null)
+    await ctx.plugin({ inject, apply }).await()
+    await ctx.configForms.describe().ensure()
+    expect(slots.entries('settings.general.item')).toHaveLength(0)
+    expect(slots.entries('shell.overlay')).toHaveLength(1)
+    expect(ctx.configForms.describe().getSnapshot().view?.namespaces.find(row => row.ns === 'session-log-deepseek')?.value).toEqual({ enabled: true })
+  } finally {
+    await ctx.fiber.dispose()
+    vi.unstubAllGlobals()
+  }
+})

@@ -34,6 +34,9 @@ export const IMAGE_HOME_DIRECTORY = 'home'
  */
 export const PLATFORM_ENTRY_CONFIG: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   'session-persistence-jsonl': { compression: 'none' },
+  // The preview exposes provider settings, but its pi-ai transport is unavailable.
+  // Keep the adapter dormant instead of activating the desktop's company route.
+  'llm-pi-ai': { providers: {} },
 }
 
 /** Working directories the host tree expects to exist, empty. */

@@ -1,5 +1,5 @@
 ---
-description: "面向侧栏的官方 DeepSeek Harness 品牌填充，仅在官方构建中生效；供选择或替换品牌呈现的用户与维护者阅读。"
+description: "面向所有构建的 Lingxi Office 矢量图案，用于侧栏与会话首页；供选择或替换品牌呈现的用户与维护者阅读。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包让以 `official` profile 构建的客户端在侧栏显示 DeepSeek Harness 标志与名称。其他构建 profile 保留外壳的鱼形标志与本地构建标签，会话首屏则始终使用动画鱼。品牌为 DeepSeek Harness 的部署应选择本包；使用其他品牌的部署应提供替代品牌包。本包不保留运行时状态，也不影响模型请求。
+本包让侧栏与会话首页显示 Lingxi Office 六瓣花标志，并在侧栏显示品牌名称。所有构建 profile 都会生效。品牌为 Lingxi Office 的部署应选择本包；使用其他品牌的部署应提供替代品牌包。本包不保留运行时状态，也不影响模型请求。
 
 ## 目录
 
@@ -25,15 +25,15 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在采用 DeepSeek 自有品牌的部署中，将本插件挂载到浏览器插件名单，然后以 `official` profile 构建客户端，让填充得以注册。
+在采用 Lingxi Office 品牌的部署中，将本插件挂载到浏览器插件名单。
 
 ### 选择 profile
 
-`DSH_CLIENT_BUILD_PROFILE` 决定渲染哪个品牌。`official` 构建在侧栏显示官方标志与名称；任何其他取值都让外壳回退——鱼形标志与本地构建标签——保持原样。会话首屏无论 profile 如何都显示来自 `dsh-client-ui-conversation` 的动画首屏鱼，因为这个回退本身就是官方标志。两种情况下插件都会照常加载并通过校验；只有注册受 profile 门控。
+插件挂载时即注册品牌，不受 `DSH_CLIENT_BUILD_PROFILE` 影响。侧栏与会话首页共用同一套六瓣花矢量几何。浏览器标题仍由独立的构建设置控制。
 
 ### 替换品牌
 
-自有身份的部署不组合本包，而是组合另一个占据侧栏 slot——以及本包留给回退的首屏 slot——的包。占据 slot 是唯一的组合路径；这里不存在任何品牌配置面。
+自有身份的部署不组合本包，而是组合另一个占据侧栏与会话首屏 slot 的包。占据 slot 是唯一的组合路径；这里不存在任何品牌配置面。
 
 -----
 
@@ -43,7 +43,9 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-两个填充作为一组声明感知的注册安装：嵌套的 `ctx.slots.inject()` 调用等待侧栏声明，因此无论本行在声明者之前还是之后激活，这组注册都能工作；声明消失时两个填充一并撤回，HMR 期间也不会留下残缺的品牌混合。浏览器半部是 [`src/client/index.ts`](src/client/index.ts)；node 半部是一个空 Loader 座位。浏览器标题是构建环境的事（`DSH_CLIENT_TITLE`），不在 slot 系统之内。
+侧栏填充作为一组感知声明的注册集安装；会话首屏在其声明组件存在时独立注册。声明撤回或插件释放时，相应注册都会撤回。浏览器侧位于 [`src/client/index.ts`](src/client/index.ts)，Node 侧是空的 Loader 入口。浏览器标题属于构建环境（`DSH_CLIENT_TITLE`），不属于 slot 系统。
+
+矢量母版位于 `artwork/mark.svg` 与 `artwork/name.svg`。在仓库根目录运行 `pnpm --filter @deepseek-ai/dsh-desktop run render:brand-assets`，即可重新生成桌面、安装器、欢迎页、favicon、Web 安装图标和 Client 几何资源。花朵采用六种纯色填充和平滑曲线，不包含位图描摹杂点。
 
 </details>
 

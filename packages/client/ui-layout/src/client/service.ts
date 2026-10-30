@@ -4,7 +4,7 @@
  * the current-session selection lives with the runtime sessions service, and
  * the per-session active view dissolved into ui-conversation's session store
  * (its only consumer). What remains here is the contract other plugins'
- * apply worlds reach for panel transitions (main-panel selection and sidebar toggle,
+ * apply worlds reach for panel transitions (main-panel selection,
  * right-panel show/hide from ui-sidebar-right) — writes stay inside the
  * store's declared action set, shared with the root registration.
  */
@@ -39,17 +39,15 @@ export interface ILayout {
    * @returns a signal aborted by the next navigation or layout disposal; check it before committing UI state.
    */
   beginNavigation(): AbortSignal
-  /** Toggle the sidebar panel (closed ⟷ contract default width). */
-  toggleSidebar(): void
   /**
    * Report the right panel's presentation without changing its expanded state.
    * @param track - whether the normal panel width reserves a grid track,
    *   including beneath a fullscreen overlay.
-   * @param fullscreen - whether the panel covers the frame and hides its outer
-   *   resize handle; independent of the underlying grid track.
+   * @param fullscreen - whether the panel covers the frame; independent of the
+   *   underlying normal grid track.
    */
   openRightbar(track: boolean, fullscreen: boolean): void
-  /** Report the right panel as hidden: no track, no handle. */
+  /** Report the right panel as hidden, releasing its track. */
   closeRightbar(): void
 }
 
@@ -89,17 +87,12 @@ export class LayoutController implements ILayout {
     this.navigation.abort()
   }
 
-  /** Toggle the sidebar panel (closed ⟷ contract default width). */
-  toggleSidebar(): void {
-    this.panels.toggleSidebar()
-  }
-
   /** Report the right panel's track and fullscreen presentation. */
   openRightbar(track: boolean, fullscreen: boolean): void {
     this.panels.openRightbar(track, fullscreen)
   }
 
-  /** Report the right panel as hidden: no track, no handle. */
+  /** Report the right panel as hidden, releasing its track. */
   closeRightbar(): void {
     this.panels.closeRightbar()
   }

@@ -76,12 +76,12 @@ it.each(['failed', 'expired', 'cancelled'] as const)('closes an already navigate
   browser.update(view(phase))
   expect(close).toHaveBeenCalledOnce()
 })
-it('leaves success completion to the Platform page', () => {
+it('closes the owned authorization tab after successful login', () => {
   const { browser, close } = setup()
   browser.follow(view('waiting-browser', 'https://platform.deepseek.com/dsh/authorize'))
   browser.update(view('succeeded'))
   browser.dispose()
-  expect(close).not.toHaveBeenCalled()
+  expect(close).toHaveBeenCalledOnce()
 })
 it('closes a blank tab when the Host finishes before it navigates', () => {
   const { browser, close } = setup()

@@ -150,6 +150,18 @@ bash apps/desktop/scripts/macos-runner-service.sh status "$HOME/dsh-ci/runner"
 
 ## 未签名 Windows 测试安装包
 
+### 内网更新
+
+发布目录包含用于构建 Nginx 分发镜像的 `Dockerfile`。在服务器解压后的发布目录中运行 `docker build --build-arg NGINX_IMAGE=<existing-nginx-image:tag> -t lingxi-office-distribution:<version> .`，随后运行 `docker run -d --name lingxi-office-distribution --restart unless-stopped -p 18765:18765 lingxi-office-distribution:<version>`。使用未占用的容器名称和宿主机端口；已有 Nginx 容器可以继续运行。离线构建要求指定的基础镜像已在本机。镜像包含所有已准备的版本，因此后续发布需保留历史发布目录并重新构建镜像。
+
+静态下载页面将列表中的最新版本固定在顶部，历史版本每页显示五个，仅在需要时显示翻页按钮。页面使用同一 Nginx 端口的 `/versions` 路径，安装包链接使用 `/versions/<version>/lingxi-office-<version>.exe`。打包后运行 `node apps/desktop/scripts/prepare-intranet-site.mjs apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts apps/desktop/.desktop-build/intranet-site`，验证安装包哈希并准备页面、版本列表、更新文件和安装包。将生成的 `versions/` 和 `updates/` 目录传到 `/srv/lingxi-office/`；先传安装包，后传更新元数据。保留本地发布目录以维护版本列表。服务器只需要 Nginx，无需运行 Node.js 服务进程。
+
+Windows x64 未签名安装包如需在应用内更新，将 [intranet.env.example](../config/intranet.env.example) 复制为 `apps/desktop/.env.windows`，不选择机器 preset。`DSH_DESKTOP_INTRANET_UPDATE_URL` 指定 HTTP(S) 更新目录；该模式启用普通版本检查和下载，省略强制更新策略和测试登录。该模式拒绝签名构建和 macOS 构建，不支持 COS 上传工具。HTTP 和未签名程序依赖内网及服务器的访问控制；文件哈希用于检测损坏，不能验证发布者身份。
+
+确认完整版本号后运行 `pnpm run package:desktop:win:x64:unsigned --build-version <confirmed-version>`。保留 `apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/` 中的 EXE、对应 `.exe.blockmap` 和 `nightly.yml`。每次新版的版本号必须大于已安装版本。分发前检查生成的版本文件，并用两个版本验证下载、确认、安装及重新启动。
+
+Linux 服务器安装 Nginx，创建 `/srv/lingxi-office/updates/win-x64/`，并在 Nginx 的 `http` 配置中包含 [intranet-nginx.conf](../config/intranet-nginx.conf)。检查端口占用，运行 `nginx -t` 后重新加载 Nginx，并允许内网访问 TCP `18765` 端口。先复制 EXE 和 blockmap，最后原子替换 `nightly.yml`；保留原始文件名和历史安装包。在内网 Windows 电脑上验证 `http://172.28.236.3:18765/updates/win-x64/nightly.yml` 及其引用文件。Nginx 部署和实际安装升级验证需要访问内网环境。
+
 在 Windows x64 上，使用完整的未签名打包命令进行本地安装测试：
 
 ```sh
@@ -171,7 +183,7 @@ pnpm run package:desktop:mac:arm64:unsigned
 pnpm run package:desktop:mac:x64:unsigned
 ```
 
-添加 `--check` 仅验证本地配置和工具而不构建，或添加 `--dir` 只生成解包应用。DMG 路径为 `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/deepseek-harness-<version>-mac-<arch>-unsigned.dmg`。所有检查通过后，命令打印 `DMG:` 及其绝对路径。打开后将应用复制到本地测试目录。
+添加 `--check` 仅验证本地配置和工具而不构建，或添加 `--dir` 只生成解包应用。DMG 路径为 `apps/desktop/.desktop-build/targets/<target>/unsigned-artifacts/lingxi-office-<version>-mac-<arch>-unsigned.dmg`。所有检查通过后，命令打印 `DMG:` 及其绝对路径。打开后将应用复制到本地测试目录。
 
 这些命令忽略 `.env.macos` 和继承的发布配置，使用 `com.deepseek.harness` 作为应用 ID，并省略自动更新和强制更新配置。构建工具、标准网络代理与 `DSH_DESKTOP_NPM_REGISTRY` 仍可从 shell 提供。它们跳过 Developer ID 签名、Apple 公证、临时签名钥匙串和公证代理修改。Electron 使用无需证书的本地 ad-hoc 签名，以便修改后的可执行文件能够运行；DMG 不签名。准备阶段和组装后的应用仍执行运行时完整性与冒烟检查。本地构建不生成更新源、ZIP 或发布完成记录，上传命令无法发布这些产物。macOS 可能要求在“系统设置 → 隐私与安全性”中批准打开未经公证的应用。
 
@@ -261,7 +273,7 @@ Windows 安装器在启动时和选定目标目录后检查应用是否正在运
 
 目录改名、空目标目录删除和旧版恢复遇到 Windows 错误 5、32 或 33 时最多尝试十次，每次等待递增 250 毫秒（每个操作合计等待 11.25 秒）。其他错误立即停止。替换失败时，安装器将 Windows 错误、相关路径和恢复结果写入解压报告旁的 `directory-failure-<时间戳>.log`。如果恢复失败，安装器会清理未被占用的暂存文件并保留备份。上报此失败后，退出清理不再重试恢复。请保留报告所列的备份目录，并在重新安装前联系支持人员。静默安装保存相同的诊断，不显示弹窗。
 
-解压失败时，安装器会把 7-Zip 的结果和完整错误输出写入更新缓存目录 `%LOCALAPPDATA%\<按包名派生>-updater\installer-logs\extract-failure-<时间戳>.log`（当前为 `@deepseek-aidsh-desktop-updater`），并在弹窗中显示首条错误行和 **复制错误信息** 按钮；静默安装只写入报告。未签名的 Windows 构建（`DSH_DESKTOP_UNSIGNED=1`）会将安装包命名为 `deepseek-harness-<版本>-win-x64-unsigned.exe`，以免被误当作发布产物。
+解压失败时，安装器会把 7-Zip 的结果和完整错误输出写入更新缓存目录 `%LOCALAPPDATA%\<按包名派生>-updater\installer-logs\extract-failure-<时间戳>.log`（当前为 `@deepseek-aidsh-desktop-updater`），并在弹窗中显示首条错误行和 **复制错误信息** 按钮；静默安装只写入报告。未签名的 Windows 构建（`DSH_DESKTOP_UNSIGNED=1`）会将安装包命名为 `lingxi-office-<版本>-win-x64-unsigned.exe`，以免被误当作发布产物。
 
 Windows 打包将 7-Zip 过滤器固定为 `BCJ`，以兼容内置的 NSIS 解码器。这样可以保留 x64 安装包中由依赖携带的 ARM64 二进制文件；自动 ARM64 过滤会生成该解码器无法解压的条目。
 
@@ -300,3 +312,19 @@ Windows 以不带版本后缀的产品名称显示已安装应用，版本保留
 ## 开发备注
 
 XXX：出现磁盘空间不足、缓存持续增长或频繁人工清理时，评估空间监测、维护入口和自动淘汰。任何自动清理方案都需要与所有使用缓存的任务协调。
+
+<a id="company-login"></a>
+
+登录失败后，在 `/data/lingxi-office/server/` 运行 `docker compose -p lingxi-office logs --since=5m --tail=80 company-login`。`exchange failed` 仅记录步骤（`iam-token`、`iam-userinfo`、`gateway-key`）、HTTP 状态与固定错误码，不记录响应正文、身份或凭证。`personal key obtained` 表示服务端已取得个人 Key，客户端仍需完成模型发现和默认模型设置。
+## versions 服务器上的公司登录
+
+Windows 用户没有部署步骤。客户端内置 `http://172.28.236.3:18765/company-login/exchange`，复用原有 IAM 回调与工作区入口。两个共享应用密钥只保留在 versions 服务器，接口不返回它们。服务端自行验证 userInfo，并以邮箱前缀获取本人 Key，不接受客户端传入 account。个人 Key 仍使用客户端原有凭证存储和模型完成流程。
+
+管理员在仓库根目录运行 `node --import tsx/esm apps/desktop/scripts/prepare-company-login.ts`，生成 `apps/desktop/.desktop-build/company-login/`。该目录包含无第三方运行时依赖的 Node 22 登录接口、Nginx 配置和 Compose 配置，不修改安装包、下载文件或更新 feed。将此目录传到现有 versions 服务器的私有部署目录，不要放在 Nginx 静态目录下。
+
+1. 将 `company-login.env.example` 复制为 `company-login.env`，仅填写 `COMPANY_IAM_CLIENT_SECRET`（IAM APP176 应用密钥）和 `COMPANY_GATEWAY_AUTH_SECRET`（已提供的网关 authSecret）。设置文件权限为管理员可读；不要上传到 versions 下载目录或写进镜像。
+2. 使用现有 versions 镜像作为 `VERSIONS_IMAGE`，保留镜像内原下载内容。登录接口直接复用内网已有的 `node:22-slim`，无需构建新镜像或联网拉取；本地镜像标签不同时可设置 `NODE_IMAGE`。检查端口 18765 原容器及挂载配置，保留其启动参数和回滚方式，再用生成的 Compose 配置接替该容器。登录容器不发布额外端口。
+3. 在部署目录运行 `docker compose build`，随后 `docker compose up -d`。Node 仅执行授权码换取 token、userInfo 验证和网关 getOrCreate，无账号数据库、会话管理或回调服务器。回调固定为 `http://127.0.0.1:18743/oauth/callback`。
+4. 确认原 `/versions` 下载页面可访问，再用包含此客户端改动的新测试包验证 IAM 登录。缺少服务端密钥时接口不启动；IAM 或网关失败时登录失败，不伪造成功。修改服务器上的密钥后运行 `docker compose up -d --force-recreate company-login`，Windows 用户无需操作。
+
+浏览器授权使用 <https://iam-stg.haierxj.com>，服务器换 token 和获取 userInfo 使用 <http://iam-stg.haiercash.work>；服务器还需要能访问测试网关。getOrCreate 请求携带 `X-Ploto-Direct-Target: ploto-llm-admin-app`，JSON 请求体包含 `system=lingxi-office`；返回的 username 必须为 `lingxi-office_` 加已验证的邮箱账号前缀。完整 .4 安装包内置 HaierCash 公司提供方（<http://ai-gateway.haierxj.cn/v1>），禁用原生 DeepSeek 提供方，Desktop 回调端口为 18743，无需单独补丁；本部署准备命令不会覆盖 .3 或 .4 安装包，也不会发布自动更新。

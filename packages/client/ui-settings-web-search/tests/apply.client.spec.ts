@@ -107,3 +107,18 @@ describe('ui-settings-web-search apply', () => {
     expect(slots.entries('plugins.item')).toHaveLength(0)
   })
 })
+
+it('hides the search entry without changing the served provider configuration', async () => {
+  vi.stubGlobal('dshDesktop', {})
+  const { ctx, slots } = await bench(['web-search-deepseek'])
+  try {
+    declareRoot(slots)
+    await ctx.plugin({ inject: [...inject], apply }).await()
+    await ctx.configForms.describe().ensure()
+    expect(slots.entries('plugins.item')).toHaveLength(0)
+    expect(ctx.configForms.describe().getSnapshot().view?.namespaces.some(row => row.ns === 'web-search-deepseek')).toBe(true)
+  } finally {
+    await ctx.fiber.dispose()
+    vi.unstubAllGlobals()
+  }
+})

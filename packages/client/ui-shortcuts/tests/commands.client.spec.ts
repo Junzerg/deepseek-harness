@@ -32,7 +32,7 @@ describe('assembled shortcut command owners', () => {
     const row = client.ctx.slots.entries('settings.general.item').find(entry => entry.options.id === 'shortcuts')!
     const rowInjected: Partial<ReferenceInjected> | undefined = row.inject?.()
     expect(rowInjected?.hooks?.catalog).toBe(shortcuts.catalog)
-    const ownerIds = ['settings.open', 'shortcuts.open', 'sidebar.left.toggle']
+    const ownerIds = ['settings.open', 'shortcuts.open']
     const ownedRows = () => shortcuts.catalog.getSnapshot().filter(row => ownerIds.includes(row.id))
     expect(ownedRows().map(row => row.id).sort()).toEqual(ownerIds)
     expect(ownedRows().filter(row => row.keys.length > 0).map(row => row.id)).toEqual(['shortcuts.open'])
@@ -128,15 +128,15 @@ describe('assembled shortcut command owners', () => {
     expect(reference.getSnapshot().open).toBe(true)
     press('Comma')
     expect(settings.getSnapshot().open).toBe(false)
-    const sidebar = layout.getSnapshot().layoutInfo.sidebar
+    const geometry = layout.getSnapshot().layoutInfo
     press('KeyB')
-    expect(layout.getSnapshot().layoutInfo.sidebar).not.toBe(sidebar)
+    expect(layout.getSnapshot().layoutInfo).toBe(geometry)
     press('Slash')
     expect(reference.getSnapshot().open).toBe(false)
     press('KeyB')
-    expect(layout.getSnapshot().layoutInfo.sidebar).toBe(sidebar)
+    expect(layout.getSnapshot().layoutInfo).toBe(geometry)
     press('KeyB', true)
-    expect(layout.getSnapshot().layoutInfo.sidebar).toBe(sidebar)
+    expect(layout.getSnapshot().layoutInfo).toBe(geometry)
     const menu = (commandId: ShortcutCommandId): void => {
       act(() => {
         for (const listener of listeners) listener({ kind: 'menu', commandId, revision: shortcuts.config.getSnapshot().revision })

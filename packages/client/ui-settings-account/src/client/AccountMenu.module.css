@@ -1,15 +1,63 @@
-.root { flex: 1; min-width: 0; }
-.anchor { width: 100%; }
-.trigger { user-select: none; display: flex; align-items: center; width: 100%; height: 44px; gap: 8px; padding: 6px; border: 0; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; cursor: pointer; }
-.trigger[data-collapsed='true'] { box-sizing: border-box; width: 36px; height: 36px; justify-content: center; gap: 0; padding: 0; }
-@media (hover: hover) {
-  .trigger:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.root {
+  flex: 1 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
-.avatar { display: flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; border-radius: 50%;
-  corner-shape: round; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-tertiary); }
-.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Signed-out launcher: a 32px More row carrying the 14px ellipsis. */
-.trigger[data-signed-out='true']:not([data-collapsed='true']) { height: 32px; padding: 6px 2px 6px 6px; line-height: 20px; }
+
+.anchor { flex: none; width: 26px; }
+
+.trigger {
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  corner-shape: round;
+  background: var(--dsw-specific-sidebar-avatar-fill);
+  color: var(--dsw-specific-sidebar-accent-ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.trigger > span { display: inline-flex; align-items: center; justify-content: center; }
+.trigger[data-signed-out='true'] { background: transparent; color: var(--dsw-alias-label-secondary); }
+
+.footerActions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+
+.iconButton {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .trigger[data-signed-out='true']:hover,
+  .iconButton:hover { background: var(--dsw-specific-task-row-hover); }
+}
+
+.trigger:focus-visible,
+.iconButton:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-specific-sidebar-accent);
+  outline-offset: -2px;
+}
 
 /* Signed-out menu card and rows; listClassName reaches the portaled card. */
 .signedOutMenu[role='menu'] {

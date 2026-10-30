@@ -795,11 +795,7 @@ describe.skipIf(MODE === 'record')('web e2e: active Schedule catalog', () => {
     await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await page.evaluate(() => { document.body.removeAttribute('data-ds-dark-theme') })
-    const openSidebar = page.getByRole('button', { name: 'Open sidebar' })
-    if (await openSidebar.isVisible()) {
-      await openSidebar.click()
-      await page.getByRole('button', { name: 'Collapse sidebar' }).waitFor({ timeout: 10_000 })
-    }
+
   }, 120_000)
 
   afterAll(async () => {

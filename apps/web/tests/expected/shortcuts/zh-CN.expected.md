@@ -13,9 +13,6 @@
         - button "修改新会话快捷键"
         - text: 新会话 ⌥ ⌘ N
       - listitem:
-        - button "修改展开／收起左侧栏快捷键"
-        - text: 展开／收起左侧栏 ⌥ ⌘ B
-      - listitem:
         - button "修改搜索会话快捷键"
         - text: 搜索会话 ⌥ ⌘ K
       - listitem:

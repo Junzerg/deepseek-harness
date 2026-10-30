@@ -55,6 +55,7 @@
  * @module @deepseek-ai/dsh-llm-pi-ai
  */
 import type {} from '@deepseek-ai/dsh-settings'
+import type {} from '@deepseek-ai/dsh-deepseek-account'
 
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 
@@ -189,6 +190,12 @@ export function apply(ctx: Context, config: Config): void {
     provider: string,
     profile: ResolvedPiAiProviderProfile,
   ): Promise<string | undefined> => {
+    if (profile.accountRequired) {
+      const token = profile.baseURL === undefined ? undefined
+        : await ctx.get('deepseekAccount')?.resolveToken(profile.baseURL)
+      if (token === undefined) throw new LlmError(`llm-pi-ai: sign in before using provider "${provider}"`, 'MISSING_CREDENTIAL')
+      return assertUsableApiKey(token, 'llm-pi-ai', provider)
+    }
     const ref = profile.apiKeyEnv
     // Only a profile that names no credential at all defers to pi-ai's
     // provider-native discovery. Once one is named, a miss must fail loud:

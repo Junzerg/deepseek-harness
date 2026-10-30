@@ -16,4 +16,8 @@
       - img "API 密钥已配置"
       - button "编辑 minimax-cn": 编辑
       - button "删除 minimax-cn": 删除
+    - listitem:
+      - text: HaierCash 自定义
+      - img "API 密钥缺失"
+      - button "编辑 HaierCash (company-gateway)": 编辑
   - button "添加模型提供商"

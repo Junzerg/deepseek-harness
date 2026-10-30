@@ -72,6 +72,44 @@ describe('unique object-name prefix search', () => {
 })
 
 describe('maintained repository reference policy', () => {
+  it.each([
+    'sdist = { url = "https://example.invalid/package.tar.gz", size = 1234567 }',
+    '    { size=1234567, hash = "sha256:checksum" },',
+    'size = 1234567\n',
+  ])('accepts an unquoted uv artifact size that collides with a commit prefix: %s', (source) => {
+    expect(findRepositoryReferences('python/sdk/uv.lock', source, new Set(['1234567']))).toEqual([])
+  })
+
+  it.each([
+    'source = { git = "https://example.invalid/repo#1234567", size = 1234567 }',
+    'size = "1234567"',
+    'commit = 1234567',
+    '# size = 1234567',
+    'size = 1234567 # commit 1234567',
+    'description = "size = 1234567"',
+    String.raw`description = "escaped \"size = 1234567\""`,
+    "description = 'size = 1234567'",
+    'description = """size = 1234567"""',
+    "description = '''size = 1234567'''",
+  ])('still rejects numeric commit references outside uv size literals: %s', (source) => {
+    expect(findRepositoryReferences('python/sdk/uv.lock', source, new Set(['1234567'])))
+      .toEqual([{ file: 'python/sdk/uv.lock', line: 1, kind: 'commit-hash' }])
+  })
+
+  it('preserves line numbers and commit references inside multiline TOML strings', () => {
+    const source = ['size = 1234567', 'description = """', 'size = 1234567', '"""'].join('\n')
+    expect(findRepositoryReferences('python/sdk/uv.lock', source, new Set(['1234567'])))
+      .toEqual([{ file: 'python/sdk/uv.lock', line: 3, kind: 'commit-hash' }])
+  })
+
+  it('does not exempt size-like text outside uv lockfiles or organization URLs in artifact rows', () => {
+    const commits = new Set(['1234567'])
+    expect(findRepositoryReferences('notes.md', 'size = 1234567', commits))
+      .toEqual([{ file: 'notes.md', line: 1, kind: 'commit-hash' }])
+    expect(findRepositoryReferences('uv.lock', `sdist = { url = "${organizationUrl}/package", size = 1234567 }`, commits))
+      .toEqual([{ file: 'uv.lock', line: 1, kind: 'organization-url' }])
+  })
+
   it('permits only the independent kit repository and its source URLs', () => {
     for (const suffix of ['', '.git', '/tree/main/packages/entry']) {
       expect(findRepositoryReferences('package.json', `${organizationUrl}/libreoffice-kit${suffix}`, new Set())).toEqual([])

@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-当 Web bundle 需要让用户导出会话日志时使用本包。它需要 Connection、命令注册表、Session 查询与持久化以及附件服务。挂载插件，然后在 Session Header 的更多操作菜单中选择 `复制会话为 Markdown` 或 `下载 Session 日志`，或输入 `/export`；浏览器会复制记录或下载 `dsh-session-<id>.zip`。
+当 Web bundle 需要让用户导出会话日志时使用本包。它需要 Connection、命令注册表、Session 查询与持久化以及附件服务。挂载插件，然后在 Session Header 的更多操作菜单中选择 `复制会话为 Markdown` 或 `下载 Session 日志`，或输入 `/export`；浏览器会复制记录或下载 `lxo-session-<id>.zip`。
 
 ### 复制会话为 Markdown
 
@@ -68,6 +68,16 @@ Web bundle 将本包与 Connection、`dsh-commands`、`dsh-client-ui-commands`�
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `compressionLevel` | `6` | 每个 ZIP 条目的 DEFLATE 级别，范围为 0 到 9。 |
+| `encryptionRecipient` | 缺失 | 可选的 age 公钥接收方；非空时加密整个 ZIP。 |
+
+<a id="administrator-encrypted-exports"></a>
+### 管理员加密导出
+
+Desktop 导出使用内置 Web bundle 配置的公钥接收方，下载文件名为 `lxo-session-<id>.zip.age`。普通 Web 在 `encryptionRecipient` 缺失或为空时仍导出 ZIP。非空但无效的公钥会阻止导出插件加载；加密及流错误不会回退为明文。GET 和 HEAD 返回相同的加密文件名及 `x-lxo-archive-format: age`。Markdown 复制和本机会话存储保持原样。
+
+管理员在已安装依赖的源码目录运行 `node packages/session-query/session-log-export/scripts/session-log-admin.mjs keygen <new-directory>`。它生成 `recipient.txt`、密码加密的 `identity.age` 和随机 `password.txt`；已有目录会被拒绝。只有公钥接收方应进入 Desktop 组合。管理员目录不能发给员工电脑，应备份两个私密文件，并在轮换公钥时保留历史私钥。POSIX 目录和文件使用 0700/0600 权限。Windows 应在仅管理员可访问的父目录下生成密钥，并确认新目录的 ACL；`chmod` 不能保证 Windows 权限隔离。
+
+运行 `node packages/session-query/session-log-export/scripts/session-log-admin.mjs decrypt <identity.age> <password.txt> <archive.zip.age> <output.zip>`。密码从文件读取，不作为命令行参数值传入。工具在目标目录旁创建私有临时目录，完整认证成功后才发布文件；错误凭据、畸形或过大的文件头、截断及损坏均不会产生完整 ZIP。已有输出不会被覆盖。目标文件系统必须支持硬链接。管理员也可使用该工具的独立打包版本与 Node.js 22 或更高版本；员工运行时不包含管理员密钥或此工具。
 
 ### 命令约定
 
