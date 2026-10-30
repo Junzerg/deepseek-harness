@@ -15,10 +15,7 @@ afterEach(() => {
 const HOLES = [
   'sidebar.brand.mark',
   'sidebar.brand.name',
-  'conversation.hero.brand.mark',
 ] as const
-
-const HERO_HOLE = 'conversation.hero.brand.mark'
 
 async function bench(declare = true) {
   const ctx = new Context()
@@ -65,13 +62,6 @@ describe('official browser-brand plugin', () => {
     for (const hole of HOLES) expect(after.slots.entries(hole)).toHaveLength(1)
   })
 
-  it('fills the conversation hero with the same brand mark', async () => {
-    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'official')
-    const subject = await bench()
-    await subject.ctx.plugin({ inject: [...inject], apply }).await()
-    expect(subject.slots.entries(HERO_HOLE)).toHaveLength(1)
-  })
-
   it('renders the official name independently from both requested mark sizes', () => {
     const name = render(<OfficialBrandName t={() => 'LingXi Office'} />)
     expect(name.container.textContent).toBe('LingXi Office')
@@ -79,9 +69,8 @@ describe('official browser-brand plugin', () => {
     expect(name.container.textContent).toBe('灵犀办公')
     name.unmount()
 
-    const mark = render(<OfficialBrandMark size={34} className="hero-mark" />)
+    const mark = render(<OfficialBrandMark size={34} />)
     expect(mark.container.querySelector('svg')?.getAttribute('width')).toBe('34')
-    expect(mark.container.querySelector('svg')?.getAttribute('class')).toBe('hero-mark')
     expect(mark.container.querySelectorAll('path')).toHaveLength(6)
     expect(mark.container.innerHTML).toContain('#F36F0A')
     mark.rerender(<OfficialBrandMark size={24} />)

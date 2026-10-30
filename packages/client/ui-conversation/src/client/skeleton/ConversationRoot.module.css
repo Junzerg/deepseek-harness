@@ -556,11 +556,11 @@
    block for position:fixed descendants (pickers/modals), shrinking them. */
 .composerHero {
   align-self: center;
-  /* figma 75:8208 drew 12 between all three rows; the workspace row now sits
-     8 above the card (its margin-top restores 12 under the hero chrome). */
-  gap: 8px;
-  /* Foot inside the centered box floats the stack a bit above true center. */
-  padding-bottom: 32px;
+  /* Workbench home: title stack starts 56px under the top bar; 22px before
+     the workspace row matches the prototype seg offset. */
+  gap: 22px;
+  padding-top: 56px;
+  padding-bottom: 40px;
   /* Card cap + both clearances: the hero input card lands at exactly the same
      width as the docked composer at every viewport. */
   width: min(calc(var(--dsh-composer-card-max-width) + 2 * var(--dsh-composer-side-clearance)), 100%);
@@ -572,7 +572,6 @@
   align-items: center;
   gap: 2px;
   min-width: 0;
-  margin-top: 4px;
   /* figma drew px 8; left nudged +12 so the chip's folder glyph lines up
      closer to the card's inner controls below; right keeps the trailing
      preset seat off the card edge. */
@@ -593,11 +592,11 @@
   display: none;
 }
 
-/* Hero: the composer sits inside the session scroll body; center there so
-   the tree seat matches active (sticky footer) without a Root remount. */
+/* Hero: the composer sits inside the session scroll body; top-align to match
+   the workbench home, without a Root remount into the active sticky footer. */
 .root[data-phase='hero'] .scrollBody,
 .embeddedBody[data-content-phase='hero'] .scrollBody {
-  justify-content: center;
+  justify-content: flex-start;
   overflow-y: auto;
 }
 

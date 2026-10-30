@@ -1,5 +1,4 @@
-import type { SidebarRootComponentProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import type { HeroBrandMarkOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SidebarBrandMarkOwnerProps, SidebarRootComponentProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { BrandLogo } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /**
@@ -7,7 +6,7 @@ import { BrandLogo } from '@deepseek-ai/dsh-client-ui-primitives'
  * @param props - Host-supplied mark presentation.
  * @returns the six-petal flower.
  */
-export function OfficialBrandMark(props: HeroBrandMarkOwnerProps) {
+export function OfficialBrandMark(props: SidebarBrandMarkOwnerProps) {
   return <BrandLogo {...props} />
 }
 

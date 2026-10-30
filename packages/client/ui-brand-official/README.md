@@ -57,7 +57,6 @@ The vector masters live in `artwork/mark.svg` and `artwork/name.svg`. Run `pnpm 
 Read these pages when the brand surface is not enough. They move from the slots this package occupies to the shell that renders them.
 
 - [ui-sidebar](../ui-sidebar/README.md) — declares `sidebar.brand.mark` and `sidebar.brand.name` and renders their fallbacks.
-- [ui-conversation](../ui-conversation/README.md) — declares `conversation.hero.brand.mark` in the hero.
 - [Web client architecture](../../../docs/subsystems/web-client.md) — how browser plugin rows load and register slots.
 
 -----

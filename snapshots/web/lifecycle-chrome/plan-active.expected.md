@@ -15,7 +15,7 @@
 - button "Account menu": More
 - banner:
   - button "Open right sidebar"
-- text: Welcome to Lingxi Office Preview
+- text: Lingxi, here to help Local work agent platform · Consumer finance
 - button "Choose workspace": workspace
 - button "Standard mode"
 - textbox "Describe what you want to build, / commands, @ files or sessions"
