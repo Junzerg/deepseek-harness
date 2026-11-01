@@ -852,13 +852,21 @@ describe('ChatView', () => {
 
     for (const mode of ['standard', 'detailed', 'compact', 'detailed'] as const) {
       act(() => { h.setTranscriptView(mode) })
-      expect(bodies.map(body => body.hasAttribute('hidden'))).toEqual([false, true, mode !== 'detailed'])
-      expect(headers.map(header => header.closest('[hidden]') !== null)).toEqual([false, false, mode === 'detailed'])
+      const flat = mode !== 'compact'
+      expect(bodies.map(body => body.hasAttribute('hidden'))).toEqual(flat ? [false, false, false] : [false, true, true])
+      expect(headers.map(header => header.closest('[hidden]') !== null)).toEqual(flat ? [true, true, true] : [false, false, false])
       expect([...view.container.querySelectorAll('[data-chat-group-key]')]).toEqual(roots)
     }
 
     act(() => { h.set({ chat: project(true), running: false }) })
     const control = view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"]')!
+    expect(control.disabled).toBe(true)
+    expect(roots.every(root => root.closest('[hidden]') === null)).toBe(true)
+    expect(headers.every(header => header.closest('[hidden]') !== null)).toBe(true)
+    expect(bodies.every(body => !body.hasAttribute('hidden'))).toBe(true)
+
+    act(() => { h.setTranscriptView('compact') })
+    expect(control.disabled).toBe(false)
     expect(control.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(control)
     expect(roots[2]!.closest('[hidden]')).toBeNull()
@@ -887,12 +895,12 @@ describe('ChatView', () => {
       expect(view.container.querySelector('[data-chat-motion]')).toBeNull()
       act(() => { h.complete() })
       expect([...view.container.querySelectorAll('[data-chat-group-key]')]).toEqual(roots)
-      expect(roots.map(root => root.hasAttribute('hidden'))).toEqual([mode !== 'verbose', mode !== 'verbose'])
+      expect(roots.map(root => root.hasAttribute('hidden'))).toEqual([mode === 'compact', mode === 'compact'])
       expect(roots.map(root => root.querySelector('[data-step-process-body]')?.hasAttribute('hidden')))
-        .toEqual([mode !== 'verbose', mode !== 'verbose'])
+        .toEqual([mode === 'compact', mode === 'compact'])
       const control = view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"]')!
-      expect(control.disabled).toBe(mode === 'verbose')
-      if (mode !== 'verbose') expect(control.getAttribute('aria-expanded')).toBe('false')
+      expect(control.disabled).toBe(mode !== 'compact')
+      if (mode === 'compact') expect(control.getAttribute('aria-expanded')).toBe('false')
       expect(view.getByText('current answer').closest('[hidden]')).toBeNull()
       expect(view.container.querySelector('[data-chat-motion]')).toBeNull()
     },
@@ -907,14 +915,14 @@ describe('ChatView', () => {
       expect(view.container.querySelector('[data-chat-flow][data-chat-motion]')).not.toBeNull()
       act(() => { h.complete() })
       expect([...view.container.querySelectorAll('[data-chat-group-key]')]).toEqual(roots)
-      expect(roots[0]!.hasAttribute('hidden')).toBe(mode !== 'verbose')
+      expect(roots[0]!.hasAttribute('hidden')).toBe(mode === 'compact')
       expect(roots[1]!.closest('[hidden]')).toBeNull()
-      const grouped = mode === 'compact' || mode === 'standard'
+      const grouped = mode === 'compact'
       expect(roots[1]!.querySelector('[data-step-process-body]')?.hasAttribute('hidden')).toBe(grouped)
       expect(roots[1]!.querySelector('[data-process-activity]')?.closest('[hidden]') !== null).toBe(!grouped)
       const control = view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"]')!
-      expect(control.disabled).toBe(mode === 'verbose')
-      if (mode !== 'verbose') expect(control.getAttribute('aria-expanded')).toBe('true')
+      expect(control.disabled).toBe(mode !== 'compact')
+      if (mode === 'compact') expect(control.getAttribute('aria-expanded')).toBe('true')
       expect(view.getByText('current answer').closest('[hidden]')).toBeNull()
     },
   )
@@ -929,19 +937,19 @@ describe('ChatView', () => {
       expect(previous.closest('[hidden]')).toBeNull()
       act(() => { h.sendNext() })
       expect(view.getByText('next question').closest('[data-submission-echo]')).not.toBeNull()
-      expect(previous.hasAttribute('hidden')).toBe(mode !== 'verbose')
-      if (mode !== 'verbose') expect(control.getAttribute('aria-expanded')).toBe('false')
+      expect(previous.hasAttribute('hidden')).toBe(mode === 'compact')
+      if (mode === 'compact') expect(control.getAttribute('aria-expanded')).toBe('false')
       act(() => { h.startNext() })
       expect(view.getAllByText('next question')).toHaveLength(1)
       expect(view.container.querySelector('[data-submission-echo]')).toBeNull()
       expect(view.container.querySelector('[data-chat-group-key][data-chat-turn="2"]')).toBe(previous)
-      expect(previous.hasAttribute('hidden')).toBe(mode !== 'verbose')
-      expect(previous.querySelector('[data-step-process-body]')?.hasAttribute('hidden')).toBe(mode !== 'verbose')
+      expect(previous.hasAttribute('hidden')).toBe(mode === 'compact')
+      expect(previous.querySelector('[data-step-process-body]')?.hasAttribute('hidden')).toBe(mode === 'compact')
       expect(view.getByText('current answer').closest('[hidden]')).toBeNull()
     },
   )
 
-  it.each(['compact', 'standard', 'detailed'] as const)(
+  it.each(['compact'] as const)(
     'retains manual open and closed choices when the latest %s Turn becomes history', (mode) => {
       const h = makeCompletionHarness(mode, 'next-input')
       const view = render(<h.ChatView {...h.props} />)
@@ -978,9 +986,9 @@ describe('ChatView', () => {
       act(() => { h.setCollapseTiming('completion') })
       expect(view.container.querySelector('[data-chat-motion]')).toBeNull()
       expect(view.container.querySelector('[data-chat-group-key][data-chat-turn="2"]')).toBe(root)
-      expect(root.hasAttribute('hidden')).toBe(mode !== 'verbose')
-      expect(root.querySelector('[data-step-process-body]')?.hasAttribute('hidden')).toBe(mode !== 'verbose')
-      if (mode !== 'verbose') expect(control.getAttribute('aria-expanded')).toBe('false')
+      expect(root.hasAttribute('hidden')).toBe(mode === 'compact')
+      expect(root.querySelector('[data-step-process-body]')?.hasAttribute('hidden')).toBe(mode === 'compact')
+      if (mode === 'compact') expect(control.getAttribute('aria-expanded')).toBe('false')
       expect(view.getByText('current answer').closest('[hidden]')).toBeNull()
     },
   )
@@ -989,7 +997,7 @@ describe('ChatView', () => {
   // animation measures the body in the commit that closes it.
   const uncapped = (body: HTMLElement): boolean => body.className.includes('expandedBody')
 
-  it.each(['compact', 'standard'] as const)(
+  it.each(['compact'] as const)(
     'closes a reader-opened running %s group from its height cap with next-input timing', (mode) => {
       const h = makeCompletionHarness(mode, 'next-input')
       const view = render(<h.ChatView {...h.props} />)
@@ -1006,7 +1014,7 @@ describe('ChatView', () => {
     },
   )
 
-  it('closes flat Detailed rows at full height and a reader-opened historical group from its cap', () => {
+  it('keeps Detailed rows expanded when the Turn becomes history', () => {
     const h = makeCompletionHarness('detailed', 'next-input')
     const view = render(<h.ChatView {...h.props} />)
     act(() => { h.complete() })
@@ -1015,17 +1023,13 @@ describe('ChatView', () => {
     const body = root.querySelector<HTMLElement>('[data-step-process-body]')!
     expect(body.hasAttribute('hidden')).toBe(false)
     expect(uncapped(body)).toBe(true)
+    expect(header.closest('[hidden]')).not.toBeNull()
     act(() => { h.sendNext() })
     act(() => { h.startNext() })
-    expect(body.hasAttribute('hidden')).toBe(true)
-    expect(uncapped(body)).toBe(true)
-    fireEvent.click(view.container.querySelector<HTMLButtonElement>('[data-turn-process="2"]')!)
-    fireEvent.click(header)
+    expect(root.closest('[hidden]')).toBeNull()
     expect(body.hasAttribute('hidden')).toBe(false)
-    expect(uncapped(body)).toBe(false)
-    fireEvent.click(header)
-    expect(body.hasAttribute('hidden')).toBe(true)
-    expect(uncapped(body)).toBe(false)
+    expect(uncapped(body)).toBe(true)
+    expect(header.closest('[hidden]')).not.toBeNull()
   })
 
   it.each([
@@ -1593,8 +1597,7 @@ describe('ChatView', () => {
   })
 
   it.each([
-    { mode: 'compact', anchor: 'group' }, { mode: 'standard', anchor: 'group' },
-    { mode: 'detailed', anchor: 'group' },
+    { mode: 'compact', anchor: 'group' },
     { mode: 'compact', anchor: 'node' }, { mode: 'standard', anchor: 'node' }, { mode: 'detailed', anchor: 'node' },
   ] as const)(
     'keeps the first visible item in place when paging inserts a steering boundary ($mode, $anchor)', ({ mode, anchor }) => {
@@ -1725,6 +1728,13 @@ describe('ChatView', () => {
     const rows = visibleRows()
     expect(rows.indexOf(control)).toBeLessThan(rows.indexOf(steer))
     expect(rows.indexOf(steer)).toBeLessThan(rows.indexOf(answer))
+    // Flat modes retain the visible tool row. Its box is inside the group, which this column mock does not measure.
+    if (hasProcess && mode !== 'compact') {
+      expect(h.chatScroll.read()?.anchorKey).toBe('fixture:tool:loaded-work')
+      expect(first.isConnected).toBe(true)
+      expect(view.container.querySelector('[data-chat-node-key="fixture:assistant:6"]')).toBe(answer)
+      return
+    }
     expect(first.getBoundingClientRect().top).toBe(top)
     expect(scroller.scrollTop).toBe(hasSteering ? 160 : 120)
     expect([...column.querySelectorAll('[data-chat-group-key]')].every(group => !group.hasAttribute('hidden'))).toBe(true)
@@ -2772,24 +2782,20 @@ describe('ChatView', () => {
     expect(members.map(member => member.getAttribute('hidden'))).toEqual([null])
   }))
 
-  it('keeps the fallback title without a disclosure when only Context precedes the answer', () => {
+  it('omits the completion line when only Context precedes the answer', () => {
     const h = makeHarness({
       nodes: [user(1, 'question'), context(2, 'runtime policy', 1), assistant(3, 'final answer', 1, 1)],
       turnEnds: new Map([[1, 4]]),
     })
     const view = render(<h.ChatView {...h.props} />)
-    const toggle = view.getByRole('button', { name: '已完成' }) as HTMLButtonElement
     const contextRow = view.container.querySelector<HTMLElement>('[data-chat-flow-kind="context"]')
 
-    expect(toggle.disabled).toBe(true)
-    expect(toggle.getAttribute('aria-expanded')).toBeNull()
-    expect(toggle.getAttribute('data-turn-process-tool-calls')).toBe('0')
-    expect(toggle.getAttribute('data-turn-process-messages')).toBe('0')
-    expect(toggle.getAttribute('data-turn-process-subagents')).toBe('0')
+    const completion = view.getByRole('button', { name: '已完成' })
+    expect(completion.getAttribute('data-plain')).toBe('true')
+    expect(view.getByRole('status').textContent).toBe('已完成')
     expect(contextRow).toBeNull()
     expect(view.container.querySelector('[data-turn-process-member]')).toBeNull()
     expect(view.queryByText('runtime policy')).toBeNull()
-    fireEvent.click(toggle)
     expect(view.container.querySelector('[data-chat-flow-kind="context"]')).toBeNull()
     expect(view.getByText('final answer').closest('[hidden]')).toBeNull()
   })
@@ -2904,19 +2910,25 @@ describe('ChatView', () => {
     expect(processRow.getAttribute('hidden')).toBe('until-found')
 
     const toggle = turnProcessControl(view.container)!
-    for (const mode of ['standard', 'detailed', 'compact'] as const) {
+    for (const mode of ['standard', 'detailed'] as const) {
       act(() => { h.setTranscriptView(mode) })
       expect(turnProcessControl(view.container)).toBe(toggle)
-      expect(toggle.getAttribute('aria-expanded')).toBe('false')
-      expect(processRow.getAttribute('hidden')).toBe('until-found')
-    }
-    fireEvent.click(toggle)
-    for (const mode of ['standard', 'detailed', 'compact'] as const) {
-      act(() => { h.setTranscriptView(mode) })
-      expect(turnProcessControl(view.container)).toBe(toggle)
+      expect(toggle.disabled).toBe(true)
       expect(toggle.getAttribute('aria-expanded')).toBe('true')
       expect(processRow.getAttribute('hidden')).toBeNull()
     }
+    act(() => { h.setTranscriptView('compact') })
+    expect(toggle.disabled).toBe(false)
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(processRow.getAttribute('hidden')).toBe('until-found')
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(processRow.getAttribute('hidden')).toBeNull()
+    act(() => { h.setTranscriptView('standard') })
+    expect(processRow.getAttribute('hidden')).toBeNull()
+    act(() => { h.setTranscriptView('compact') })
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect(processRow.getAttribute('hidden')).toBeNull()
   })
 
   it('folds a question reply with the surrounding process and reveals it on expansion', () => {
@@ -3125,11 +3137,13 @@ describe('ChatView', () => {
     let group = view.container.querySelector<HTMLElement>('[data-chat-group-key]')
     for (const mode of ['compact', 'standard', 'detailed'] as const) {
       act(() => { h.setTranscriptView(mode) })
-      expect(toggle.getAttribute('aria-expanded')).toBe('false')
-      expect(row.getAttribute('hidden')).toBe('until-found')
-      if (grouped) expect(group?.getAttribute('hidden')).toBe('until-found')
+      const folds = mode === 'compact'
+      expect(toggle.getAttribute('aria-expanded')).toBe(folds ? 'false' : 'true')
+      expect(row.getAttribute('hidden')).toBe(folds ? 'until-found' : null)
+      if (grouped) expect(group?.getAttribute('hidden')).toBe(folds ? 'until-found' : null)
       expect(view.getByText('loaded final answer')).toBeTruthy()
     }
+    act(() => { h.setTranscriptView('compact') })
     if (manualOpen) fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe(String(manualOpen))
     expect(row.hasAttribute('hidden')).toBe(!manualOpen)

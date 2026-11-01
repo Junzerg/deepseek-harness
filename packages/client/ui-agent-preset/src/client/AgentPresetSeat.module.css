@@ -1,144 +1,99 @@
-/* Agent-preset chip on the new-session screen, beside the workspace picker.
-   Geometry mirrors HeroShell's .workspace so the two read as one row. */
+/* Agent-preset segment under the blank-home title. Geometry follows the
+   workbench home `.seg` track; the selected-mode note follows the homeScenes
+   dashed bulb tip (always visible, not a hover card). */
 
-/* Overflow-driven degradation (mirrors HeroShell's .workspace), no
-   breakpoint: the label shrinks with an ellipsis down to nothing, so the
-   preset icon and chevron always sit snug against whatever text remains —
-   full text, ellipsized text, or none. */
-/* The Menu anchor wrapper between the row and this chip: its flex
-   auto-minimum would hold the full label width and the row could never
-   compress the chip. The explicit floor is the icon-only end state — 8px
-   paddings + 16px icon + two 4px gaps + 14px chevron — so the glyphs never
-   crush once the label has ellipsized away to nothing. */
-.menuAnchor {
-  min-width: 54px;
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
   max-width: 100%;
 }
 
-.seat {
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: 18px;
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+.mark {
+  display: inline-flex;
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.option {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
-  max-width: min(100%, 240px);
-  min-height: 28px;
-  padding: 0 8px;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 7px 18px;
   border: none;
-  border-radius: var(--dsw-radius-sm);
+  border-radius: 20px;
+  corner-shape: round;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 28%, var(--dsw-alias-label-secondary));
+  font-size: 13.5px;
+  font-weight: 400;
   line-height: 20px;
-  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.seat[aria-expanded='true'] {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
 @media (hover: hover) {
-  .seat:not(:disabled):hover {
+  .option:not(:disabled):not(.on):hover {
     background: var(--dsw-alias-interactive-bg-hover);
   }
 }
 
-.seat:disabled {
+.option:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
+}
+
+.option.on {
+  background: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-bg-base);
+  font-weight: 600;
+}
+
+.option:disabled {
   cursor: default;
-  color: var(--dsw-alias-label-quaternary);
+  opacity: 0.55;
 }
 
-.seatIcon {
-  flex: none;
-  color: var(--dsw-alias-label-primary);
-}
-
-.seatLabel {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Introduce cue: the icon eases in on an overshoot-free expo curve (duration
-   matches INTRO_TEXT_DELAY_MS, so the characters start the moment it lands),
-   then the name's characters fade up on a stagger (delays set inline per
-   character). All chars occupy their width from the start, so nothing
-   reflows mid-run. */
-.introIcon {
-  animation: seat-icon-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes seat-icon-in {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Wraps the staggered characters into one flex item, so the chip's gap
-   applies around the name as a whole rather than between characters. */
-.introText {
-  display: inline-block;
-  white-space: pre;
-}
-
-.introChar {
-  display: inline-block;
-  white-space: pre;
-  opacity: 0;
-  animation: seat-char-in 0.4s ease-out forwards;
-}
-
-@keyframes seat-char-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .introIcon,
-  .introChar {
-    animation: none;
-    opacity: 1;
-  }
-}
-
-.chevron {
-  flex: none;
-  color: var(--dsw-alias-label-caption);
-}
-
-/* Menu rows carry the name over its description: the id alone never said what
-   a preset does, which is why the metadata exists. */
-.item {
+/* Workbench homeScenes tip: always-on dashed rounded note under the segment. */
+.hint {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-width: 280px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: min(560px, 100%);
+  padding: 10px 14px;
+  border: 1px dashed var(--dsw-alias-border-l3);
+  border-radius: 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.6;
+  text-align: left;
 }
 
-.itemName {
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--dsw-alias-label-primary);
+.bulb {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
-.itemDesc {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--dsw-alias-label-caption);
-  white-space: normal;
+.hintText {
+  min-width: 0;
 }

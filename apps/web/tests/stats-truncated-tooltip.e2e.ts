@@ -81,24 +81,13 @@ describe('web e2e: truncated composer statistics', () => {
     await scaffold?.close()
   })
 
-  it('shows the full reading of a pill the narrow composer cuts off', async () => {
+  it('does not show the composer usage reading', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-stats-truncated-tooltip'))
     await page.locator('[role="treeitem"]').first().click()
     await page.locator('[role="treeitem"]').nth(1).click()
-    const usagePill = page.getByRole('button', { name: USAGE_READING, exact: true })
-    await usagePill.waitFor({ timeout: 15_000 })
-    const tooltip = page.getByRole('tooltip')
-    const label = usagePill.locator(':scope > span')
-    const cut = () => label.evaluate(element => element.scrollWidth > element.clientWidth)
-    expect(await cut()).toBe(false)
-
-    await page.setViewportSize({ width: 390, height: 900 })
-    await expect.poll(cut).toBe(true)
-    await usagePill.hover()
-    await expect.poll(() => tooltip.textContent()).toBe(USAGE_READING)
-    await usagePill.click()
-    await page.getByRole('dialog', { name: 'Token usage' }).waitFor()
-    expect(await tooltip.count()).toBe(0)
+    await page.getByRole('textbox').first().waitFor({ timeout: 15_000 })
+    expect(await page.getByRole('button', { name: USAGE_READING, exact: true }).count()).toBe(0)
+    expect(await page.locator('[data-composer-dock]').count()).toBe(0)
   }, 60_000)
 
   it('stayed clean', () => {

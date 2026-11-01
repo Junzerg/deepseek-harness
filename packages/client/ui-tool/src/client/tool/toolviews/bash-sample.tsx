@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, type KeyboardEvent } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import clsx from 'clsx'
 import {
-  IconApiOutlineRegular, IconChevronDownOutlineRegular, IconChevronUpOutlineRegular, IconInspectOutlineRegular,
+  IconApiOutlineRegular, IconChevronRightOutlineRegular, IconInspectOutlineRegular,
   CommandText, TerminalBlock, TextShimmer,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -82,16 +82,7 @@ export const BashRow = memo(function BashRow({ toolName, block, sessionId, useSe
     event.preventDefault()
     toggleExpand()
   }, [expandable, toggleExpand])
-  const leading = open
-    ? <IconChevronUpOutlineRegular className={css.chevron} />
-    : expandable
-      ? (
-        <>
-          <span className={css.iconIdle}>{BASH_ICON}</span>
-          <IconChevronDownOutlineRegular className={clsx(css.chevron, css.chevronHover)} />
-        </>
-      )
-      : BASH_ICON
+  const leading = BASH_ICON
   return (
     <div className={css.card}>
       <div
@@ -120,6 +111,9 @@ export const BashRow = memo(function BashRow({ toolName, block, sessionId, useSe
           </span>
           {exitLabel !== null && <ExitCodeBadge label={exitLabel} />}
         </TextShimmer>
+        {expandable && (
+          <IconChevronRightOutlineRegular className={open ? css.chevronOpen : css.edgeChevron} size={13} />
+        )}
       </div>
       {open && (
         <div className={css.bodyWrap}>

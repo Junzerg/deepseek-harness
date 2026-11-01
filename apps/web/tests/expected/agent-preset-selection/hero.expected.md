@@ -1,2 +1,3 @@
 - button "Choose workspace": workspace
-- button "Standard mode"
+- 'button "Access mode, current: Workspace Write"': Workspace Write
+- button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash

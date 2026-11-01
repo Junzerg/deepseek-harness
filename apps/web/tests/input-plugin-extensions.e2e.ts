@@ -38,11 +38,12 @@ it('expands an input activity and inserts one undoable result without overwritin
     await expect.poll(async () => {
       const activityBox = await start.boundingBox(), modelBox = await model.boundingBox(), sendBox = await send.boundingBox()
       return activityBox !== null && modelBox !== null && sendBox !== null
-        && activityBox.x >= modelBox.x + modelBox.width && activityBox.x + activityBox.width <= sendBox.x
+        && activityBox.x + activityBox.width <= sendBox.x
+        && modelBox.y >= sendBox.y + sendBox.height
     }).toBe(true)
   }
   await start.click()
-  expect(await model.isVisible()).toBe(false)
+  expect(await model.isVisible()).toBe(true)
   expect(await send.isVisible()).toBe(true)
   await compareOrRefreshGolden(expected,
     await captureStableAria(page, '[data-composer-card]', scaffold.workspaceCwd), webSnapshotMode())

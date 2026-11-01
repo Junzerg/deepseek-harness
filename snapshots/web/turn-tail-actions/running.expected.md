@@ -16,11 +16,8 @@
 - paragraph: partial
 - status: Deep diving
 - text: Deep diving for {{duration}} ···
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Stop generating"
-- button "1 turns 1 steps · {{throughput}} tok/s": 1 turns 1 steps{{throughput}} tok/s
-- button "7.9K tok · Cache hit 0%": 7.9K tokCache hit 0%
-- button "6% of context used": 6%

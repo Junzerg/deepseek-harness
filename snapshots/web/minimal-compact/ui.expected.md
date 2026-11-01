@@ -16,8 +16,6 @@
 - button "Completed in {{duration}}" [disabled]
 - paragraph: MINIMAL_COMPACT_READY
 - button "Copy"
-- button "Good response"
-- button "Bad response"
 - button "Branch into a new conversation"
 - text: {{clock}}
 - button "compact Compacted 2 history items (~{{tokens}} tokens)" [expanded]
@@ -28,15 +26,11 @@
 - button "Completed in {{duration}}" [disabled]
 - paragraph: MINIMAL_COMPACT_OK
 - button "Copy"
-- button "Good response"
-- button "Bad response"
 - button "Branch into a new conversation"
 - text: {{clock}}
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
 - button "2 turns 2 steps"
-- button "28 tok · Cache hit 0%": 28 tokCache hit 0%
-- button "0% of context used": 0%

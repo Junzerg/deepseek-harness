@@ -213,8 +213,8 @@ it.skipIf(webSnapshotMode() === 'record')('guides voice setup, records from stan
   await mic.waitFor()
   const micBox = await mic.boundingBox(), modelBox = await page.getByRole('button', { name: /^Select model, current/ }).boundingBox()
   const sendBox = await page.getByRole('button', { name: 'Send message', exact: true }).boundingBox()
-  expect(micBox!.x).toBeGreaterThan(modelBox!.x)
   expect(micBox!.x).toBeLessThan(sendBox!.x)
+  expect(modelBox!.y).toBeGreaterThan(sendBox!.y)
   await input.fill(prefix)
   await mic.click()
   await page.getByRole('button', { name: 'Stop and transcribe', exact: true }).waitFor()
@@ -234,18 +234,7 @@ it.skipIf(webSnapshotMode() === 'record')('guides voice setup, records from stan
   await input.press('Enter')
   await settled
   await page.getByText('DONE', { exact: true }).waitFor()
-  const meter = page.getByRole('button', { name: /% of context used/ })
-  await meter.waitFor()
-  for (const width of [1280, 420]) {
-    await page.setViewportSize({ width, height: 900 })
-    await expect.poll(async () => {
-      const micRect = await mic.boundingBox(), meterRect = await meter.boundingBox()
-      return micRect !== null && meterRect !== null && meterRect.y >= micRect.y + micRect.height
-    }).toBe(true)
-    await meter.click()
-    await page.getByRole('dialog', { name: 'of context used', exact: true }).waitFor()
-    await page.keyboard.press('Escape')
-  }
+  expect(await page.getByRole('button', { name: /% of context used/ }).count()).toBe(0)
   await mic.hover()
   await page.getByRole('tooltip', { name: 'Dictate', exact: true }).waitFor()
   const controlBackground = await page.getByRole('button', { name: 'Add files or run commands', exact: true })
@@ -260,16 +249,11 @@ it.skipIf(webSnapshotMode() === 'record')('guides voice setup, records from stan
     expect(waveformBox!.height).toBeLessThanOrEqual(Math.min(stopBox!.height, cancelBox!.height))
   }
   await input.hover()
-  expect(await meter.isVisible()).toBe(false)
   expect(await stop.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(controlBackground)
   expect(await page.getByRole('button', { name: 'Cancel', exact: true })
     .evaluate(element => getComputedStyle(element).backgroundColor)).toBe(controlBackground)
   await page.keyboard.press('Escape')
   await mic.waitFor()
-  await meter.waitFor()
-  await meter.click()
-  await page.getByRole('dialog', { name: 'of context used', exact: true }).waitFor()
-  await page.keyboard.press('Escape')
   await mic.click()
   await stop.waitFor()
   await page.evaluate(() => {

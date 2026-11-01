@@ -94,6 +94,7 @@ interface BenchOptions {
   /** The hub's steer-all face (empty-draft accelerated Enter). */
   steerQueue?: () => void
   variant?: 'hero' | 'composer'
+  workspaceTool?: InputBarProps['workspaceTool']
   placeholder?: string
   t?: InputBarProps['t']
   accessory?: React.ReactNode
@@ -230,6 +231,7 @@ function bench(over?: BenchOptions) {
     ...(over?.onRequestWorkspace !== undefined ? { onRequestWorkspace: over.onRequestWorkspace } : {}),
     ...(over?.placeholder !== undefined ? { placeholder: over.placeholder } : {}),
     ...(over?.accessory !== undefined ? { accessory: over.accessory } : {}),
+    ...(over?.workspaceTool !== undefined ? { workspaceTool: over.workspaceTool } : {}),
   }
   const view = render(<InputBar {...props} />)
   const textarea = view.container.querySelector<HTMLDivElement>('[data-composer-input]')!
@@ -755,9 +757,9 @@ describe('Enter semantics', () => {
   })
 
   it('keeps the owning placeholder or ordinary guidance when whole-queue steering is unavailable', () => {
-    expect(bench({ running: true }).placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
-    expect(bench({ queue: [row('q-1')] }).placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
-    expect(bench({ running: true, queue: [row('q-1')], draft: '消息' }).placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
+    expect(bench({ running: true }).placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
+    expect(bench({ queue: [row('q-1')] }).placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
+    expect(bench({ running: true, queue: [row('q-1')], draft: '消息' }).placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
     expect(bench({
       running: true,
       queue: [row('q-1')],
@@ -769,7 +771,7 @@ describe('Enter semantics', () => {
       running: true,
       queue: [row('q-1')],
       commandMenuOpen: true,
-    }).placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
+    }).placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
     // The steer hint intentionally outranks the plan placeholder: while it
     // shows, the whole-queue gesture is genuinely available in plan mode.
     expect(bench({
@@ -1613,7 +1615,7 @@ describe('running and lock semantics', () => {
   it('disabled state shows the unavailable placeholder; custom placeholder wins', () => {
     expect(bench({ disabled: true }).placeholder).toBe('会话不可用')
     const live = bench()
-    expect(live.placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
+    expect(live.placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
     const custom = bench({ placeholder: 'Custom placeholder' })
     expect(custom.placeholder).toBe('Custom placeholder')
   })
@@ -1660,7 +1662,7 @@ describe('running and lock semantics', () => {
     expect(entering.placeholder).toBe('描述你的任务以生成计划')
     // Pending exit: target is default again.
     const leaving = bench({ plan: { active: true, pending: true } })
-    expect(leaving.placeholder).toBe('发消息或创建任务, / 调用指令, @ 文件或对话')
+    expect(leaving.placeholder).toBe('继续补充要求，或 @ 添加上下文，/ 调用技能与指令')
     // Owner placeholder outranks the plan swap.
     const custom = bench({ plan: { active: true, pending: false }, placeholder: 'Custom placeholder' })
     expect(custom.placeholder).toBe('Custom placeholder')
@@ -1970,7 +1972,45 @@ describe('strips and variants', () => {
     expect(view.container.querySelector('[class*="hero"]')).not.toBeNull()
   })
 
-  it('renders overlay, left/right, and footer slots at their layout positions', () => {
+  it('seats workspace, permission, and model under the blank-home card', () => {
+    const buttonRef = { current: null }
+    const onToggle = vi.fn()
+    const { view } = bench({
+      variant: 'hero',
+      workspaceTool: { label: 'workspace', menuOpen: false, buttonRef, onToggle },
+      permissionEntry: <button type="button">permission seat</button>,
+      modelEntry: <button type="button">model seat</button>,
+    })
+    const tools = view.container.querySelector('[data-hero-tools]')
+    expect(tools).not.toBeNull()
+    const card = view.container.querySelector('[data-composer-card]')
+    expect(card?.contains(tools)).toBe(false)
+    expect(tools?.textContent).toContain('workspace')
+    expect(tools?.textContent).toContain('permission seat')
+    expect(tools?.textContent).toContain('model seat')
+    expect(card?.textContent).not.toContain('permission seat')
+    expect(card?.textContent).not.toContain('model seat')
+    fireEvent.click(view.getByRole('button', { name: '选择工作区' }))
+    expect(onToggle).toHaveBeenCalledOnce()
+  })
+
+  it('seats permission and model under the docked chat card', () => {
+    const { view } = bench({
+      variant: 'composer',
+      permissionEntry: <button type="button">permission seat</button>,
+      modelEntry: <button type="button">model seat</button>,
+    })
+    const tools = view.container.querySelector('[data-composer-tools]')
+    expect(tools).not.toBeNull()
+    const card = view.container.querySelector('[data-composer-card]')
+    expect(card?.contains(tools)).toBe(false)
+    expect(tools?.textContent).toContain('permission seat')
+    expect(tools?.textContent).toContain('model seat')
+    expect(card?.textContent).not.toContain('permission seat')
+    expect(card?.textContent).not.toContain('model seat')
+  })
+
+  it('renders overlay and left/right slots, and omits the docked usage strip', () => {
     const { view } = bench({
       overlay: <i data-testid="ov" />,
       leftItems: <i data-testid="li" />,
@@ -1980,7 +2020,8 @@ describe('strips and variants', () => {
     expect(view.getByTestId('ov')).toBeTruthy()
     expect(view.getByTestId('li')).toBeTruthy()
     expect(view.getByTestId('ri')).toBeTruthy()
-    expect(view.getByTestId('foot')).toBeTruthy()
+    expect(view.queryByTestId('foot')).toBeNull()
+    expect(view.container.querySelector('[data-composer-dock]')).toBeNull()
   })
 })
 
@@ -1994,9 +2035,8 @@ describe('command launcher chrome and control seats', () => {
     // seat set is the contract).
     expect([...new Set(slotCalls.map(c => c.key))]).toEqual([
       'conversation.input.overlay', 'conversation.input.attachments',
-      'conversation.input.permission', 'conversation.input.plan', 'conversation.input.left',
-      'conversation.input.right', 'conversation.input.model', 'conversation.input.activity',
-      'conversation.composer.dock',
+      'conversation.input.left', 'conversation.input.right', 'conversation.input.activity',
+      'conversation.input.plan', 'conversation.input.permission', 'conversation.input.model',
     ])
     expect(view.queryByLabelText('Plan mode')).toBeNull()
     expect(view.queryByLabelText('Model')).toBeNull()
@@ -2083,7 +2123,8 @@ it('lets a toolbar activity replace accessories without replacing the draft edit
   })
   const editor = view.getByRole('textbox')
   fireEvent.click(view.getByRole('button', { name: 'expand activity' }))
-  expect(view.queryByRole('button', { name: 'model choice' })).toBeNull()
+  const model = view.getByRole('button', { name: 'model choice' })
+  expect(view.container.querySelector('[data-composer-card]')?.contains(model)).toBe(false)
   expect(view.getByRole('textbox')).toBe(editor)
   expect(editor.textContent).toBe('keep this draft')
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
@@ -2091,24 +2132,18 @@ it('lets a toolbar activity replace accessories without replacing the draft edit
   expect(view.getByRole('button', { name: 'model choice' })).toBeTruthy()
 })
 
-it('places context usage below the composer and hides it until the activity closes', () => {
+it('omits context usage under the docked composer while an activity can still expand', () => {
   const { view } = bench({ draft: 'draft', contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 },
     activityEntry: owner => <>
       <button onClick={() => { owner.onActiveChange(true) }}>microphone</button>
       <button onClick={() => { owner.onActiveChange(false) }}>close activity</button>
     </>,
   })
-  const meter = view.getByRole('button', { name: '上下文已用 25%' })
-  const microphone = view.getByRole('button', { name: 'microphone' })
-  expect(microphone.compareDocumentPosition(meter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  fireEvent.click(meter)
-  expect(view.getByRole('dialog', { name: '上下文已用' })).toBeTruthy()
-  fireEvent.click(microphone)
-  expect(view.queryByRole('dialog', { name: '上下文已用' })).toBeNull()
+  expect(view.queryByRole('button', { name: '上下文已用 25%' })).toBeNull()
+  fireEvent.click(view.getByRole('button', { name: 'microphone' }))
   expect(view.queryByRole('button', { name: '上下文已用 25%' })).toBeNull()
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
   fireEvent.click(view.getByRole('button', { name: 'close activity' }))
-  fireEvent.click(view.getByRole('button', { name: '上下文已用 25%' }))
-  expect(view.getByRole('dialog', { name: '上下文已用' })).toBeTruthy()
+  expect(view.queryByRole('button', { name: '上下文已用 25%' })).toBeNull()
   expect(view.getByRole('button', { name: '发送消息' })).toBeTruthy()
 })

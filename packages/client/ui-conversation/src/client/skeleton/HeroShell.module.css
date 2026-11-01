@@ -10,13 +10,15 @@
   padding: 0 24px;
 }
 
-/* Cap matches the InputBar card. */
+/* Cap matches the InputBar card. Mode segment sits 22px under the subtitle,
+   matching the workbench home `.seg` offset. */
 .stack {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  gap: 22px;
   width: 100%;
-  max-width: var(--dsh-composer-card-max-width);
+  max-width: 780px;
   overflow: visible;
 }
 
@@ -31,13 +33,13 @@
 .title {
   color: var(--dsw-alias-label-primary);
   font-size: 32px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.5px;
   line-height: 1.2;
 }
 
 .subtitle {
-  color: var(--dsw-alias-label-caption);
+  color: var(--dsw-alias-label-tertiary);
   font-size: 13px;
   font-weight: 400;
   line-height: 1.5;

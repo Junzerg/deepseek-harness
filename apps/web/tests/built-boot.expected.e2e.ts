@@ -113,15 +113,7 @@ it('boots the built plugin graph and renders a fixture session end to end', asyn
   })
   fireEvent.click(allowOnce)
 
-  // The fixture mirrors all three token-meter projections, so the assembled
-  // ContextMeter reaches its composition panel instead of only the occupancy
-  // fallback path.
-  const contextTrigger = await screen.findByRole('button', { name: /of context used/ })
-  fireEvent.click(contextTrigger)
-  const contextPanel = await screen.findByRole('dialog', { name: 'of context used' })
-  within(contextPanel).getByText('System prompt')
-  within(contextPanel).getByText('Tool definitions')
-  within(contextPanel).getByText('Messages')
+  expect(screen.queryByRole('button', { name: /of context used/ })).toBeNull()
 
   // The built ToolRow and DiffBlock share the write fixture's trailing-newline
   // semantics: `hello fixture\n` contributes one addition. Counts belong to the

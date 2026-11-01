@@ -17,6 +17,8 @@ export interface DisclosureRowProps {
   expandOnRowClick?: boolean | undefined
   /** Replaces the collapsed icon with a chevron while the row is hovered. */
   previewChevron?: boolean | undefined
+  /** Keeps the business icon in the leading slot while the row is open. */
+  retainLeadingIcon?: boolean | undefined
   /** Keeps `collapsedContent` inline while open. */
   keepContentWhenOpen?: boolean | undefined
   collapsedContent?: ReactNode
@@ -49,6 +51,7 @@ export const DisclosureRow = memo(function DisclosureRow({
   running = false,
   expandOnRowClick = false,
   previewChevron = expandable,
+  retainLeadingIcon = false,
   keepContentWhenOpen = false,
   collapsedContent,
   headerAccessory,
@@ -79,7 +82,7 @@ export const DisclosureRow = memo(function DisclosureRow({
       </>
     )
     : icon
-  const leading = open
+  const leading = open && !retainLeadingIcon
     ? <IconChevronUpOutlineRegular className={chevronClassName} />
     : collapsedLeading
 

@@ -6,8 +6,11 @@ import { JsonBlock, MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MarkdownFileMentions, MarkdownPathImages } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatNodeOwnerProps, ChatViewSlotProps, UseDisclosure, UsePresentation, UseGroupAction } from '../contract/slots.ts'
 import type { AssistantBlock } from '../contract/snapshot.ts'
+import { hasAssistantReplyContent } from '../contract/assistant-content.ts'
 import { markdownLabels } from '../markdown-labels.ts'
+import { formatMessageClock, formatRunDuration } from './message-chrome.ts'
 import { ReasoningRow } from './ReasoningRow.tsx'
+import { useCalendarDay } from './use-calendar-day.ts'
 import css from './AssistantMarkdown.module.css'
 
 /**
@@ -50,6 +53,8 @@ export interface AssistantMarkdownProps extends
   revealProcess?: (() => void) | undefined
   /** Resolved prose file mentions for this Assistant's closing turn. */
   mentions?: MarkdownFileMentions | undefined
+  /** Workbench reply mark. Omitted for reasoning rows. */
+  identity?: { running: boolean; time?: number; elapsedMs?: number } | undefined
   /** The owning view's locale seat, passed down as a plain prop. */
   t: ChatViewSlotProps['t']
 }
@@ -57,7 +62,7 @@ export interface AssistantMarkdownProps extends
 /** Renders non-blank reasoning blocks as independent disclosures alongside the response. */
 export const AssistantMarkdown = memo(function AssistantMarkdown({
   blocks, streaming, textInteractionSource = false, interrupted, loadImage, groupPart, useDisclosure,
-  reasoningHidden = false, usePresentation, revealProcess, mentions, renderSlot, useGroupAction, t,
+  reasoningHidden = false, usePresentation, revealProcess, mentions, identity, renderSlot, useGroupAction, t,
 }: AssistantMarkdownProps) {
   // Stable per locale revision (t identity changes on switch): a fresh object
   // per render would rebuild MarkdownText's component table every chunk.
@@ -147,6 +152,9 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
   }
   return (
     <div className={css.root} data-streaming={streaming || undefined}>
+      {identity !== undefined && hasAssistantReplyContent(blocks) && (
+        <AssistantIdentity running={identity.running} time={identity.time} elapsedMs={identity.elapsedMs} t={t} />
+      )}
       <div className={css.body}>
         {rendered}
         {interrupted && (groupPart === undefined || groupPart === 'response'
@@ -156,6 +164,27 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
     </div>
   )
 })
+
+function AssistantIdentity({ running, time, elapsedMs, t }: {
+  running: boolean
+  time?: number | undefined
+  elapsedMs?: number | undefined
+  t: AssistantMarkdownProps['t']
+}) {
+  const day = useCalendarDay()
+  const label = running
+    ? t('message.assistant.running')
+    : elapsedMs !== undefined
+      ? `${t('message.assistant.took')}${formatRunDuration(elapsedMs, t).map(part => part.text).join('')}`
+      : time === undefined ? null : formatMessageClock(time, t, day)
+  return (
+    <div className={css.head}>
+      <span className={css.avatar} aria-hidden>{t('message.assistant.mark')}</span>
+      <span className={css.name}>{t('message.assistant.name')}</span>
+      {label !== null && <span className={css.time}>{label}</span>}
+    </div>
+  )
+}
 
 function ProcessReasoning({ hidden, reveal, useGroupAction, children }: {
   hidden: boolean

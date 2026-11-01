@@ -18,7 +18,7 @@
 - button "Code Catch an Auto-denied inner call"
 - text: Failed
 - button "Bash Rejected by Auto review"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Auto review"': Auto review
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
@@ -49,7 +49,7 @@
 - button "Bash Rejected by Auto review" [expanded]
 - text: "OUT Tool was not executed. Reason: ptc raw reason"
 - button "Inspect"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Auto review"': Auto review
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
@@ -107,7 +107,7 @@
     - tab "Schema"
     - tab "Timing"
   - tabpanel "Result": "AutoReviewDeniedError: AUTO_REVIEW_DENIED Error: Auto review rejected tool \"bash\"; its body was not executed"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Auto review"': Auto review
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash

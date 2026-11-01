@@ -15,7 +15,7 @@
 - button "Copy"
 - text: "Interjection: include the word ORANGE in your final reply."
 - button "Copy"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash

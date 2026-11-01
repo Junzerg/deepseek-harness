@@ -1,4 +1,4 @@
-- textbox "Describe what you want to build, / commands, @ files or sessions":
+- textbox "What can I help with today? @ add context, / skills and commands":
   - paragraph: Use the bash tool to
 - button "Cancel"
 - img "Recording…"

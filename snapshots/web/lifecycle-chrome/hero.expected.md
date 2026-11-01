@@ -16,11 +16,11 @@
 - banner:
   - button "Open right sidebar"
 - text: Lingxi, here to help Local work agent platform · Consumer finance
-- button "Choose workspace": workspace
 - button "Standard mode"
-- textbox "Describe what you want to build, / commands, @ files or sessions":
+- textbox "What can I help with today? @ add context, / skills and commands":
   - paragraph
 - button "Add files or run commands"
+- button "Send message" [disabled]
+- button "Choose workspace": workspace
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
-- button "Send message" [disabled]

@@ -853,17 +853,18 @@ describe('ConversationRoot resident composer', () => {
     const chip = b.view.getByRole('button', { name: '选择工作区' })
     expect((chip as HTMLButtonElement).disabled).toBe(false)
     expect(b.slotCalls).toContain('conversation.hero.workspace')
-    // The agent-preset chip sits in the same row, for the same reason: both
-    // choices are only open before the first message.
+    // Agent preset sits under the hero title; both choices stay open only
+    // before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
     expect(b.slotCalls).toContain('conversation.hero.options')
   })
 
-  it('seats the New Session options after the agent-preset chip, and only for a Session', () => {
+  it('seats agent preset under the hero title, and New Session options only for a Session', () => {
     const b = mount(sessionSnapshotOf({ blank: true }))
+    const headline = b.view.getByTestId('hero-headline')
     const preset = within(b.view.container).getByTestId('view-conversation.hero.agentPreset')
-    const options = within(b.view.container).getByTestId('view-conversation.hero.options')
-    expect(options.parentElement?.previousElementSibling).toBe(preset)
+    expect(headline.compareDocumentPosition(preset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(b.view.container).getByTestId('view-conversation.hero.options')).toBeTruthy()
 
     const cold = mount(sessionSnapshotOf(), [], undefined, { sessionId: undefined })
     expect(cold.slotCalls).toContain('conversation.hero.agentPreset')
@@ -911,32 +912,32 @@ describe('ConversationRoot resident composer', () => {
     Element.prototype.releasePointerCapture = function () { captured.delete(this) }
     Element.prototype.hasPointerCapture = function () { return captured.has(this) }
     try {
-      // Base resolves from the adaptive clamp: min(1600*0.64, 920) = 920.
-      // Dragging the right handle outward by 25px widens by 2×25 = 50 → 970,
+      // Base resolves from the adaptive clamp: min(1600*0.64, 820) = 820.
+      // Dragging the right handle outward by 25px widens by 2×25 = 50 → 870,
       // inside both bounds (max = 1600 − 176 = 1424 keeps the handles on-column).
       fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, clientY: 300 })
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 825, clientY: 300 })
       expect(handle.style.getPropertyValue('--dsh-width-handle-pointer-y')).toBe('300px')
       fireEvent.pointerUp(handle, { pointerId: 1, clientX: 825, clientY: 300 })
       expect(handle.hasAttribute('data-dragging')).toBe(false)
-      expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('970px')
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
+      expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('870px')
+      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('870')
       // Window shrinks: the displayed width re-clamps (900 − 176 = 724) but the
       // preference stays.
       Object.defineProperty(content, 'offsetWidth', { value: 900, configurable: true })
       act(() => { fireResize(content) })
       expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('724px')
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
+      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('870')
       // A press without travel (a real double-click delivers two such
       // press/release rounds) must not commit the clamped display value over
       // the stored preference.
       fireEvent.pointerDown(handle, { pointerId: 1, clientX: 800, clientY: 300 })
       fireEvent.pointerUp(handle, { pointerId: 1, clientX: 800, clientY: 300 })
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
+      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('870')
       expect(root.style.getPropertyValue('--dsh-chat-user-width')).toBe('724px')
       // No reset affordance on the handle: double-click leaves the preference alone.
       fireEvent.doubleClick(handle)
-      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('970')
+      expect(localStorage.getItem('dsh.conversation.contentWidth')).toBe('870')
     } finally {
       for (const [name, descriptor] of originals) {
         if (descriptor === undefined) Reflect.deleteProperty(Element.prototype, name)

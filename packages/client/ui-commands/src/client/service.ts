@@ -33,7 +33,7 @@ import type { CommandDescriptor } from './directory.ts'
 import { CommandDirectory } from './directory.ts'
 import { PopupSelectController } from './popup.ts'
 import { builtinRowFace, sectionRows } from './presentation.ts'
-import { builtinCommandName, claimToken } from './resolution.ts'
+import { claimToken, composerOmits } from './resolution.ts'
 import type { TokenSegment } from './popup.ts'
 
 declare module '@deepseek-ai/dsh-api-session-controller/client' {
@@ -227,7 +227,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     const seen = new Set<string>()
     for (const c of list) {
       seen.add(c.name)
-      if ('dshDesktop' in globalThis && builtinCommandName(c) === 'feedback') continue
+      if (composerOmits(c)) continue
       rows.push({
         name: c.name,
         ...(builtinRowFace(c, this.t) ?? { description: c.description }),
@@ -259,7 +259,9 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
       return 'handled'
     }
     const desc = this.directory.resolve(pick.session.sessionId, name)
-    if (desc === undefined) return undefined // snapshot swapped between menu and pick → miss
+    // A missing descriptor is a catalog swap between menu and pick. Omitted
+    // commands are not composer skills even if a stale row names them.
+    if (desc === undefined || composerOmits(desc)) return undefined
     // A decoration replaces the HOST row's bare invocation with its popup or
     // action; it decorates only a resolvable host command (checked above),
     // never manufactures one, and never touches the argument claim below.
@@ -297,7 +299,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     if (!token.startsWith('/')) return undefined
     if (this.live.contributions.has(token.slice(1))) return undefined
     const desc = this.directory.resolve(session.sessionId, token.slice(1))
-    if (desc === undefined || desc.input === undefined) return undefined
+    if (desc === undefined || desc.input === undefined || composerOmits(desc)) return undefined
     return this.leadingClaim(desc, session, token.slice(1))
   }
 
@@ -342,7 +344,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     }
     await this.directory.ensureReady(session.sessionId, signal)
     const desc = this.directory.resolve(session.sessionId, typedName)
-    if (desc === undefined) return undefined
+    if (desc === undefined || composerOmits(desc)) return undefined
     const name = desc.name
     const canonical = `/${name}${trimmed.slice(token.length)}`
     // Bare enter on a decorated host command opens its popup; an argued line

@@ -6,6 +6,11 @@
 .card {
   display: flex;
   flex-direction: column;
+  margin: 8px 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-base);
+  overflow: hidden;
 }
 
 /* Expanded terminal card, matching ToolRow's terminalBody: 4px indent, l1
@@ -93,9 +98,12 @@
 .root {
   display: flex;
   align-items: center;
-  height: calc(24px + var(--dsh-content-font-delta, 0px));
+  box-sizing: border-box;
+  height: auto;
+  min-height: calc(24px + var(--dsh-content-font-delta, 0px));
   min-width: 0;
-  color: var(--dsw-alias-label-tertiary);
+  padding: 8px 11px;
+  color: color-mix(in srgb, var(--dsw-alias-label-primary) 28%, var(--dsw-alias-label-secondary));
   transition: color 100ms ease;
 }
 
@@ -109,6 +117,20 @@
   .root {
     transition: none;
   }
+}
+
+.edgeChevron,
+.chevronOpen {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+  color: var(--dsw-alias-label-caption);
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
 }
 
 .leading {
@@ -132,6 +154,7 @@
 .leading svg:not([data-state]) {
   width: calc(14px + var(--dsh-content-font-delta, 0px));
   height: calc(14px + var(--dsh-content-font-delta, 0px));
+  color: var(--dsw-specific-sidebar-accent);
 }
 
 .chevron {
@@ -166,7 +189,8 @@
 
 .title {
   flex: none;
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 12.5px;
+  font-weight: 500;
   line-height: calc(24px + var(--dsh-content-font-delta, 0px));
 }
 

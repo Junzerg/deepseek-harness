@@ -16,11 +16,11 @@
 - banner:
   - button "打开右侧边栏"
 - text: 灵犀，我帮你 本地工作智能体平台 · 消费金融场景
-- button "选择工作区": workspace
 - button "标准模式"
-- textbox "描述你想要构建的内容, / 调用指令, @ 文件或对话"
+- textbox "今天帮你做些什么？@ 添加上下文，/ 调用技能与指令"
 - button "添加文件或调用指令"
+- button "发送消息" [disabled]
+- button "选择工作区": workspace
 - button "访问模式，当前：工作区内修改": 工作区内修改
 - button "计划模式已开启，按下关闭": 计划
 - button "选择模型，当前 DeepSeek-V4-Flash": DeepSeek-V4-Flash
-- button "发送消息" [disabled]

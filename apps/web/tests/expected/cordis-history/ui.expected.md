@@ -36,8 +36,6 @@
 - button "Think The activation request has been submitted, so I will return the requested readiness marker."
 - paragraph: CORDIS_UI_READY
 - button "Copy"
-- button "Good response"
-- button "Bad response"
 - button "Branch into a new conversation"
 - text: 9/1 {{clock}}
 - button "Plugin status updated 9/1 {{clock}}":
@@ -47,8 +45,6 @@
 - button "Completed in {{duration}}" [disabled]
 - paragraph: The Cordis Plugin is running.
 - button "Copy"
-- button "Good response"
-- button "Bad response"
 - button "Branch into a new conversation"
 - text: 9/1 {{clock}} Use only Cordis tools. Call cordis_stop with pluginId "snap-1". After it succeeds, reply exactly CORDIS_UI_DONE and stop. 9/1 {{clock}}
 - button "Copy"
@@ -60,16 +56,12 @@
 - text: Dynamic Plugin snap-1 is stopped; its definition and versions remain.
 - paragraph: CORDIS_UI_DONE
 - button "Copy"
-- button "Good response"
-- button "Bad response"
 - button "Branch into a new conversation"
 - text: 9/1 {{clock}}
 - button "Back to bottom"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
 - button "Send message" [disabled]
 - button "3 turns 7 steps"
-- button "66.8K tok · Cache hit 77%": 66.8K tokCache hit 77%
-- button "0% of context used": 0%

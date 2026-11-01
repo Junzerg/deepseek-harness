@@ -1,9 +1,8 @@
 /**
- * Feedback surface plugin, browser half: the Like/Dislike entry in the
- * conversation.chat.assistant-actions strip, the feedback dialog and its
+ * Feedback surface plugin, browser half: the feedback dialog and its
  * acknowledgement and failure toasts in conversation.input.overlay, and the `/feedback`
- * decoration that opens the dialog from the composer menu or a bare typed
- * command. The feedbackUi service opens the same dialog for other plugins.
+ * decoration that opens the dialog. Like and Dislike are not mounted in the
+ * assistant action row. The feedbackUi service opens the same dialog for other plugins.
  * One FeedbackSurface per Session backs every entry in that Session.
  * @module @deepseek-ai/dsh-client-ui-message-feedback/client
  */
@@ -23,7 +22,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import { FeedbackDialog } from './FeedbackDialog.tsx'
-import { MessageFeedbackActions } from './MessageFeedbackActions.tsx'
 import type { FeedbackDialogInjected, MessageFeedbackInjected } from './slots.ts'
 import { FeedbackSurface } from './surface.ts'
 import { en, zh } from './locales.ts'
@@ -56,11 +54,16 @@ declare module '@deepseek-ai/cordis' {
 /** Dictionary namespace owned by this plugin. */
 const NS = 'feedback'
 
+/** The assistant action row does not show Like or Dislike. */
+function HiddenMessageRatings(): null {
+  return null
+}
+
 /** Required services: the slot registry, the two Remote namespaces, and the copy. */
 export const inject = ['slots', 'remote', 'remote.messageFeedback', 'remote.sessionFeedback', 'locale']
 
 /**
- * Client plugin body: the per-message feedback entry, the Session's dialog
+ * Client plugin body: a hidden per-message feedback entry, the Session's dialog
  * entry, the `feedbackUi` service, the `/feedback` decoration, and their
  * per-session surfaces.
  * @param ctx - client root context.
@@ -110,7 +113,7 @@ export function apply(ctx: ClientContext): void {
         openDialog: (messageId, rating) => { dialog.open({ kind: 'message', messageId, rating }) },
       }
     },
-  }, MessageFeedbackActions))
+  }, HiddenMessageRatings))
 
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay',

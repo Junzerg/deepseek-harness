@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The two conversation-adjacent surfaces: the new-session chip naming the
+ * The two conversation-adjacent surfaces: the new-session segment naming the
  * next session's preset, and the session header's read-only label. The split
  * is the host's rule — a session's history is produced under its preset's
  * tools, so the choice is only ever offered before one starts.
@@ -99,52 +99,45 @@ function renderLabel(
   return { load, view }
 }
 
-describe('the new-session chip', () => {
+describe('the new-session segment', () => {
   it.each([false, true])('offers Standard, Creator and custom presets with Developer tools %s', (enabled) => {
     const actions = renderSeat({ options: [
       { id: 'standard' }, { id: 'ptc' }, { id: 'minimal' }, { id: 'cordis' }, { id: 'mine' },
     ] }, undefined, undefined, enabled)
 
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.getAllByRole('menuitem')).toHaveLength(enabled ? 5 : 3)
-    expect(screen.getByRole('menuitem', { name: /^Standard mode/ })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: /^mine/ })).toBeTruthy()
-    expect(screen.queryByRole('menuitem', { name: /^PTC mode/ }) !== null).toBe(enabled)
-    expect(screen.queryByRole('menuitem', { name: /^Minimal mode/ }) !== null).toBe(enabled)
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Creator mode/ }))
+    expect(screen.getAllByRole('radio')).toHaveLength(enabled ? 5 : 3)
+    expect(screen.getByRole('radio', { name: en.presetStandardName })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'mine' })).toBeTruthy()
+    expect(screen.queryByRole('radio', { name: en.presetPtcName }) !== null).toBe(enabled)
+    expect(screen.queryByRole('radio', { name: en.presetMinimalName }) !== null).toBe(enabled)
+    fireEvent.click(screen.getByRole('radio', { name: en.presetCordisName }))
     expect(actions.select).toHaveBeenCalledWith('cordis')
   })
 
   it('keeps a named custom preset that overrides a development preset id', () => {
     renderSeat({ options: [{ id: 'ptc', name: 'My workflow' }] }, undefined, undefined, false)
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByRole('menuitem', { name: /^My workflow/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'My workflow' })).toBeTruthy()
   })
 
-  it('keeps the current mode visible without opening a picker when all options are hidden', () => {
+  it('keeps the current mode visible and locked when Coding Tools hide every row', () => {
     const actions = renderSeat({ current: 'minimal', options: [{ id: 'ptc' }, { id: 'minimal' }] }, undefined, undefined, false)
-    const trigger = screen.getByRole<HTMLButtonElement>('button', { name: en.presetMinimalName })
-    expect(trigger.disabled).toBe(true)
-    fireEvent.click(trigger)
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('menu')).toBeNull()
+    const current = screen.getByRole<HTMLButtonElement>('radio', { name: en.presetMinimalName })
+    expect(current.disabled).toBe(true)
+    expect(current.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(current)
     expect(actions.select).not.toHaveBeenCalled()
   })
 
-  it('closes a picker when its last visible option disappears and keeps it closed when options return', () => {
+  it('locks to the staged mode when every other option disappears, then unlocks when options return', () => {
     const options = [{ id: 'minimal' }, { id: 'mine' }]
     const actions = renderSeat({ current: 'minimal', options }, undefined, undefined, false)
-    const trigger = screen.getByRole<HTMLButtonElement>('button', { name: en.presetMinimalName })
-    fireEvent.click(trigger)
-    expect(screen.getByRole('menuitem', { name: /^mine/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'mine' })).toBeTruthy()
     act(() => { actions.store.set({ ...actions.store.getSnapshot(), options: [{ id: 'ptc' }, { id: 'minimal' }] }) })
-    expect(trigger.disabled).toBe(true)
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('menu')).toBeNull()
+    const current = screen.getByRole<HTMLButtonElement>('radio', { name: en.presetMinimalName })
+    expect(current.disabled).toBe(true)
+    expect(screen.queryByRole('radio', { name: 'mine' })).toBeNull()
     act(() => { actions.store.set({ ...actions.store.getSnapshot(), options }) })
-    expect(trigger.disabled).toBe(false)
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.getByRole('radio', { name: 'mine' })).toHaveProperty('disabled', false)
     expect(actions.select).not.toHaveBeenCalled()
   })
 
@@ -152,99 +145,96 @@ describe('the new-session chip', () => {
     renderSeat({}, undefined, {
       id: 's1', retainInfo: { referenceCount: 1, retainedBy: { mainView: 1 } },
     })
-    expect(screen.getByRole('button')).toBeTruthy()
+    expect(screen.getByRole('radiogroup')).toBeTruthy()
     cleanup()
 
     renderSeat({}, undefined, { id: 's1', retainInfo: undefined })
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
   })
 
-  it('reads the roster once and shows the staged preset by name', async () => {
+  it('reads the roster once and marks the staged preset', async () => {
     const actions = renderSeat()
 
     await waitFor(() => { expect(actions.load).toHaveBeenCalledTimes(1) })
-    expect(screen.getByRole('button').textContent).toContain(en.presetStandardName)
-    expect(screen.getByRole('button').getAttribute('title')).toBe(en.seatHint)
+    expect(screen.getByRole('radio', { name: en.presetStandardName }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('radiogroup').getAttribute('title')).toBe(en.seatHint)
   })
 
-  it('offers each preset with what it is for', () => {
+  it('always shows the staged preset description in one dashed hint line with a leading bulb', () => {
     renderSeat()
 
-    fireEvent.click(screen.getByRole('button'))
+    const group = screen.getByRole('radiogroup')
+    const hintId = group.getAttribute('aria-describedby')
+    expect(hintId).toBe('agent-preset-hint')
+    const hint = document.getElementById(hintId!)
+    expect(hint?.textContent).toBe(en.presetStandardDescription)
+    expect(hint?.querySelectorAll('svg')).toHaveLength(1)
 
-    // The id alone never said what a preset does; the description is the
-    // whole reason a preset can publish metadata at all.
-    expect(screen.getByText(en.presetStandardDescription)).toBeTruthy()
-    // A preset that published none still reads as a row, with its id standing
-    // in for the name.
-    expect(screen.getByText(en.noDescription)).toBeTruthy()
-    expect(screen.getByText('mine')).toBeTruthy()
+    cleanup()
+    renderSeat({ current: 'mine' })
+    expect(document.getElementById('agent-preset-hint')?.textContent).toBe(en.noDescription)
+    expect(document.getElementById('agent-preset-hint')?.querySelectorAll('svg')).toHaveLength(1)
   })
 
-  it('closes the picker immediately when developer tools turn off without changing the staged preset', () => {
-    const actions = renderSeat()
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.getByText(en.presetStandardDescription)).toBeTruthy()
+  it('drops Coding Tools presets when Developer tools turn off without changing the staged preset', () => {
+    const actions = renderSeat({ options: [
+      { id: 'standard' }, { id: 'ptc' }, { id: 'minimal' }, { id: 'cordis' },
+    ] })
+    expect(screen.getByRole('radio', { name: en.presetPtcName })).toBeTruthy()
     act(() => { actions.developerTools.set(false) })
-    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText(en.presetStandardDescription)).toBeNull()
+    expect(screen.queryByRole('radio', { name: en.presetPtcName })).toBeNull()
+    expect(screen.getByRole('radio', { name: en.presetStandardName }).getAttribute('aria-checked')).toBe('true')
     expect(actions.select).not.toHaveBeenCalled()
-    act(() => { actions.developerTools.set(true) })
-    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false')
-    expect(screen.getByRole('button').textContent).toContain(en.presetStandardName)
   })
 
   it('falls back to the id when the staged preset published no name', () => {
     renderSeat({ current: 'mine' })
 
-    expect(screen.getByRole('button').textContent).toContain('mine')
+    expect(screen.getByRole('radio', { name: 'mine' }).getAttribute('aria-checked')).toBe('true')
   })
 
-  it('shows the staged id until a stale roster contains it', () => {
+  it('keeps the roster options when the staged id is still arriving', () => {
     renderSeat({ current: 'arriving' })
 
-    expect(screen.getByRole('button').textContent).toContain('arriving')
+    expect(screen.getByRole('radio', { name: en.presetStandardName }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.queryByRole('radio', { name: 'arriving' })).toBeNull()
   })
 
-  it('stages the picked preset and closes the menu', () => {
+  it('stages the picked preset', () => {
     const actions = renderSeat()
-    fireEvent.click(screen.getByRole('button'))
-
-    fireEvent.click(screen.getByText('mine'))
+    fireEvent.click(screen.getByRole('radio', { name: 'mine' }))
 
     expect(actions.select).toHaveBeenCalledWith('mine')
-    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('disables the trigger while a switch is in flight', () => {
+  it('ignores a click on the already selected option', () => {
+    const actions = renderSeat()
+    fireEvent.click(screen.getByRole('radio', { name: en.presetStandardName }))
+    expect(actions.select).not.toHaveBeenCalled()
+  })
+
+  it('disables every option while a switch is in flight', () => {
     renderSeat({ busy: true })
 
-    expect(screen.getByRole('button')).toHaveProperty('disabled', true)
+    for (const option of screen.getAllByRole('radio')) {
+      expect(option).toHaveProperty('disabled', true)
+    }
   })
 
-  it('shows a refused switch on the trigger', () => {
+  it('shows a refused switch on the segment', () => {
     renderSeat({ error: 'session has already started' })
 
-    expect(screen.getByRole('button').getAttribute('title')).toBe('session has already started')
+    expect(screen.getByRole('radiogroup').getAttribute('title')).toBe('session has already started')
   })
 
   it('renders nothing before the roster arrives or when there is none', () => {
     const empty = renderSeat({ options: [] })
     expect(empty).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('radiogroup')).toBeNull()
     cleanup()
 
     renderSeat({ current: '' })
-    expect(screen.queryByRole('button')).toBeNull()
-  })
-
-  it('closes on an outside dismissal', () => {
-    renderSeat()
-    fireEvent.click(screen.getByRole('button'))
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-
-    expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('radiogroup')).toBeNull()
   })
 })
 
@@ -285,99 +275,22 @@ describe('a refused switch', () => {
   it('says nothing when the switch lands', async () => {
     const actions = renderSeat()
 
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByRole('menuitem', { name: /mine/ }))
+    fireEvent.click(screen.getByRole('radio', { name: 'mine' }))
 
     await waitFor(() => { expect(actions.select).toHaveBeenCalledWith('mine') })
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })
 
-describe('the chip introduce cue', () => {
-  afterEach(() => {
-    vi.useRealTimers()
-    vi.unstubAllGlobals()
-  })
-
-  /** Character spans carry inline animation delays; nothing else does. */
-  function delayedChars(): HTMLElement[] {
-    return Array.from(screen.getByRole('button').querySelectorAll<HTMLElement>('[style]'))
-  }
-
-  it('reveals a long Latin name inside the shared window, then acknowledges', () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-    vi.useFakeTimers()
-    const actions = renderSeat({
-      current: 'creator',
-      options: [{ id: 'creator', name: 'CreatorMode' }],
-      introduce: true,
-    })
-
-    // Eleven characters split the 200ms window into 20ms steps, where the
-    // fixed 40ms tick would have doubled the run for a Latin name.
-    const chars = delayedChars()
-    expect(chars.map(span => span.textContent).join('')).toBe('CreatorMode')
-    expect(chars[0]!.style.animationDelay).toBe('150ms')
-    expect(chars[1]!.style.animationDelay).toBe('170ms')
-    expect(chars[10]!.style.animationDelay).toBe('350ms')
-
-    // 150 delay + 200 window + 400 fade: acknowledged only once the last
-    // character has settled, and the label is plain text again after.
-    act(() => { vi.advanceTimersByTime(749) })
-    expect(actions.introduced).not.toHaveBeenCalled()
-    act(() => { vi.advanceTimersByTime(1) })
-    expect(actions.introduced).toHaveBeenCalledTimes(1)
-    expect(delayedChars()).toHaveLength(0)
-  })
-
-  it('keeps the per-tick cap for a short CJK name', () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-    vi.useFakeTimers()
-    renderSeat({
-      current: 'creator',
-      options: [{ id: 'creator', name: '创造模式' }],
-      introduce: true,
-    })
-
-    // Four characters fit under the window, so the 40ms tick applies as-is.
-    const chars = delayedChars()
-    expect(chars).toHaveLength(4)
-    expect(chars[1]!.style.animationDelay).toBe('190ms')
-    expect(chars[3]!.style.animationDelay).toBe('270ms')
-  })
-
-  it('starts a one-character name with no stagger at all', () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-    vi.useFakeTimers()
-    const actions = renderSeat({
-      current: 'creator',
-      options: [{ id: 'creator', name: 'C' }],
-      introduce: true,
-    })
-
-    expect(delayedChars()[0]!.style.animationDelay).toBe('150ms')
-    act(() => { vi.advanceTimersByTime(550) })
-    expect(actions.introduced).toHaveBeenCalledTimes(1)
-  })
-
-  it('skips the run under reduced motion and acknowledges at once', () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+describe('the segment introduce cue', () => {
+  it('acknowledges a staged introduce as soon as the roster is ready', () => {
     const actions = renderSeat({ introduce: true })
-
     expect(actions.introduced).toHaveBeenCalledTimes(1)
-    expect(delayedChars()).toHaveLength(0)
   })
 
-  it('acknowledges an empty staged name without arming a run', () => {
-    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-    const actions = renderSeat({
-      current: 'creator',
-      options: [{ id: 'creator', name: '' }],
-      introduce: true,
-    })
-
-    expect(actions.introduced).toHaveBeenCalledTimes(1)
-    expect(delayedChars()).toHaveLength(0)
+  it('waits for a ready roster before acknowledging', () => {
+    const actions = renderSeat({ introduce: true, options: [], current: '' })
+    expect(actions.introduced).not.toHaveBeenCalled()
   })
 })
 

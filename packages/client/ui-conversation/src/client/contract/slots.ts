@@ -504,6 +504,16 @@ export interface ComposerBarOwnerProps {
   workspacePickerOpen?: boolean
   /** Open the Workspace picker from the inert composer surface. */
   onRequestWorkspace?: () => void
+  /**
+   * Blank-home workspace chip. It sits under the card with permission and model.
+   * The picker stays on the conversation shell and anchors through `buttonRef`.
+   */
+  workspaceTool?: {
+    label?: string
+    menuOpen: boolean
+    buttonRef: RefObject<HTMLButtonElement>
+    onToggle: () => void
+  }
   placeholder?: string
   /** Optional content rendered above the composer surface. */
   accessory?: ReactNode

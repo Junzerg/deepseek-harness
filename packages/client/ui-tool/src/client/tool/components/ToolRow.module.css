@@ -9,6 +9,47 @@
 .root {
   display: flex;
   flex-direction: column;
+  margin: 8px 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-base);
+  overflow: hidden;
+}
+
+.root .row {
+  box-sizing: border-box;
+  height: auto;
+  padding: 8px 0 8px 11px;
+}
+
+.root [data-disclosure-header][data-has-accessory] .row {
+  flex: 1 1 auto;
+}
+
+.chevronHit {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.chevron,
+.chevronOpen {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-right: 11px;
+  color: var(--dsw-alias-label-caption);
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.root .leading {
+  color: var(--dsw-specific-sidebar-accent);
 }
 
 .leading {
@@ -20,7 +61,8 @@
 }
 
 .title {
-  font-weight: 400;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
 .sep {

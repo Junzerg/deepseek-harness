@@ -60,7 +60,7 @@ export function WorkspaceChip({ buttonRef, label, menuOpen = false, onClick, t }
   )
 }
 
-/** Hero chrome props. The workspace row rides the InputBar accessory hole, not here. */
+/** Hero chrome props. The workspace row sits under the composer card on blank home. */
 export interface HeroShellProps {
   /** The owner's locale seat, passed down as a plain prop. */
   t: HeroTranslate
@@ -69,7 +69,7 @@ export interface HeroShellProps {
 }
 
 /**
- * Render the hero chrome (title block only; no composer, no workspace row).
+ * Render the hero chrome (title, subtitle, and optional mode segment).
  * @param props - see {@link HeroShellProps}.
  * @returns the centered hero element tree.
  */
@@ -81,8 +81,8 @@ export function HeroShell({ t, children }: HeroShellProps) {
           <span className={css.title} data-testid="hero-headline">{t('hero.headline')}</span>
           <span className={css.subtitle}>{t('hero.subtitle')}</span>
         </div>
+        {children}
       </div>
-      {children}
     </div>
   )
 }

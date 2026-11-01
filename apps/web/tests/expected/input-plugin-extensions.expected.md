@@ -1,4 +1,4 @@
-- textbox "Describe what you want to build, / commands, @ files or sessions":
+- textbox "What can I help with today? @ add context, / skills and commands":
   - paragraph: Draft
 - button "Cancel activity"
 - button "Insert result"

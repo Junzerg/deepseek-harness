@@ -278,7 +278,8 @@ describe('web e2e: agent-preset selection', () => {
 
     const snapshot = await captureStableAria(page, '[class*="heroWorkspaceRow"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(HERO_EXPECTED, snapshot, MODE)
-    expect(snapshot).toContain('Standard mode')
+    expect(snapshot).toContain('Choose workspace')
+    expect(await page.getByRole('button', { name: 'Standard mode', exact: true }).count()).toBe(1)
   })
 
   it('names every preset and what it is for', async () => {

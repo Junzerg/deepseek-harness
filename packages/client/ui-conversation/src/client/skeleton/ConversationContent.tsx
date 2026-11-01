@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
 import type { ConversationContentProps, ConversationViewsProps, InputZone } from '../contract/slots.ts'
-import { HeroShell, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
+import { HeroShell, workspaceLabel } from './EmptyHero.tsx'
 import css from './ConversationRoot.module.css'
 
 function ConversationSessionView({ renderSlot }: ConversationViewsProps) {
@@ -107,32 +107,19 @@ export function ConversationContent(props: ConversationContentProps) {
     ? undefined
     : workspaceDisplayTitle(storedChipTitle, t('workspace.defaultName'))
 
-  const heroWorkspaceRow = (
-    <div className={css.heroWorkspaceRow}>
-      <WorkspaceChip
-        buttonRef={pickerAnchor}
-        label={chipTitle}
-        menuOpen={pickerOpen}
-        onClick={() => { setPickerOpen(open => !open) }}
-        t={t}
-      />
-      {renderSlot('conversation.hero.workspace', {
-        open: pickerOpen,
-        anchorRef: pickerAnchor,
-        selectedId: pendingWorkspaceId ?? sessionWorkspace?.workspaceId,
-        onPick: (workspaceId) => {
-          setPickerOpen(false)
-          setPendingWorkspaceId(workspaceId)
-          void selectWorkspace(workspaceId).catch(() => {
-            setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
-          })
-        },
-        onClose: () => { setPickerOpen(false) },
-      })}
-      {renderSlot('conversation.hero.agentPreset', {})}
-      {sessionId === undefined ? null : <div className={css.heroOptions}>{renderSlot('conversation.hero.options', {})}</div>}
-    </div>
-  )
+  const workspacePicker = renderSlot('conversation.hero.workspace', {
+    open: pickerOpen,
+    anchorRef: pickerAnchor,
+    selectedId: pendingWorkspaceId ?? sessionWorkspace?.workspaceId,
+    onPick: (workspaceId) => {
+      setPickerOpen(false)
+      setPendingWorkspaceId(workspaceId)
+      void selectWorkspace(workspaceId).catch(() => {
+        setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
+      })
+    },
+    onClose: () => { setPickerOpen(false) },
+  })
 
   // The placeholder chip ("Choose workspace") and the Workspace-trigger input travel
   // together: no workspace picked yet (cold start, no session at all), or a
@@ -159,14 +146,29 @@ export function ConversationContent(props: ConversationContentProps) {
         // user clears it.
         ? { blocked: composerBlock, placeholder: composerBlock.reason }
         : hero ? { placeholder: t('placeholder.hero') } : {}),
+    ...(hero ? {
+      workspaceTool: {
+        ...(chipTitle === undefined ? {} : { label: chipTitle }),
+        menuOpen: pickerOpen,
+        buttonRef: pickerAnchor,
+        onToggle: () => { setPickerOpen(open => !open) },
+      },
+    } : {}),
   })
 
   const composerBar = (
     <div className={clsx(css.composerStack, hero && css.composerHero)}>
-      {hero && <HeroShell t={t} />}
-      {hero && heroWorkspaceRow}
+      {hero && (
+        <HeroShell t={t}>
+          {renderSlot('conversation.hero.agentPreset', {})}
+        </HeroShell>
+      )}
       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
       {inputBar}
+      {hero && workspacePicker}
+      {hero && sessionId !== undefined
+        ? <div className={css.heroOptions}>{renderSlot('conversation.hero.options', {})}</div>
+        : null}
     </div>
   )
 

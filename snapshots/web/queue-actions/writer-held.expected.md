@@ -1,5 +1,5 @@
 - alert: This session is already in use, possibly by another running DSH instance (such as dsh web or the desktop app). Quit other running DSH instances and try again.
-- textbox "Message or run a task, / commands, @ files or sessions":
+- textbox "Continue with more detail, or @ add context, / skills and commands":
   - paragraph: Queue submission to retry
 - button "Add files or run commands"
 - 'button "Access mode, current: Workspace Write"': Workspace Write

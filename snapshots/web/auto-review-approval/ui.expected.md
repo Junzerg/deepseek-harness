@@ -17,7 +17,7 @@
 - 'button "Tool call Error: the user rejected tool \"mystery\""'
 - text: Failed
 - 'button "Tool call Error: Auto review of tool \"mystery\" failed; its body was not executed: auto-review: reviewer ended with error UNKNOWN: provider unavailable"'
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Auto review"': Auto review
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash
@@ -47,7 +47,7 @@
 - 'button "Tool call Error: Auto review of tool \"mystery\" failed; its body was not executed: auto-review: reviewer ended with error UNKNOWN: provider unavailable" [expanded]'
 - text: "IN { \"target\": \"notes.txt\" } OUT Error: Auto review of tool \"mystery\" failed; its body was not executed: auto-review: reviewer ended with error UNKNOWN: provider unavailable"
 - button "Inspect"
-- textbox "Message or run a task, / commands, @ files or sessions"
+- textbox "Continue with more detail, or @ add context, / skills and commands"
 - button "Add files or run commands"
 - 'button "Access mode, current: Auto review"': Auto review
 - button "Select model, current DeepSeek-V4-Flash": DeepSeek-V4-Flash

@@ -351,7 +351,7 @@ async function bootPreview(site: Site, manifest: ImageManifest, browser: Browser
     await continueButton.click()
     // Worker previews have no inference transport or configured company route.
     // Finishing the notice must reach the composer without credential onboarding.
-    await page.locator('[data-composer-input][data-placeholder="Describe what you want to build, / commands, @ files or sessions"]')
+    await page.locator('[data-composer-input][data-placeholder="What can I help with today? @ add context, / skills and commands"]')
       .waitFor({ timeout: 30_000 })
 
     const exercised = await page.evaluate(async ({ seededSessionId, seededSessionTitle }) => {

@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  CodeBlock, DiffBlock, DisclosureRow, IconInspectOutlineRegular, ReadBlock, SearchBlock,
+  CodeBlock, DiffBlock, DisclosureRow, IconChevronRightOutlineRegular, IconInspectOutlineRegular, ReadBlock, SearchBlock,
   TerminalBlock, TextShimmer, WebBlock,
   diffTotals,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -383,9 +383,18 @@ export const ToolRow = memo(function ToolRow({
         open={open}
         expandable={expandable}
         expandOnRowClick
+        previewChevron={false}
+        retainLeadingIcon
         keepContentWhenOpen
         onToggle={toggleExpand}
         collapsedContent={collapsedContent}
+        headerAccessory={expandable
+          ? (
+            <span className={css.chevronHit} onClick={toggleExpand}>
+              <IconChevronRightOutlineRegular className={open ? css.chevronOpen : css.chevron} size={13} />
+            </span>
+          )
+          : undefined}
       >
         {expandedContent}
       </DisclosureRow>

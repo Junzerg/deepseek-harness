@@ -1,6 +1,6 @@
 /** Assistant reasoning disclosure, independent of Tool-call presentation. */
 import { memo, useMemo } from 'react'
-import { DisclosureRow, IconThinkOutlineRegular, TextShimmer } from '@deepseek-ai/dsh-client-ui-primitives'
+import { DisclosureRow, IconChevronRightOutlineRegular, IconThinkOutlineRegular, TextShimmer } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatViewSlotProps, UseDisclosure, UsePresentation } from '../contract/slots.ts'
 import a11yCss from './accessibility.module.css'
@@ -90,13 +90,20 @@ export const ReasoningRow = memo(function ReasoningRow({
         leadingClassName={css.leading}
         titleClassName={css.title}
         icon={THINK_ICON}
-        title={t('message.think')}
+        title={t('message.think.card')}
         running={running}
         open={expanded}
         expandable
         expandOnRowClick
+        previewChevron={false}
+        retainLeadingIcon
         onToggle={toggle}
         collapsedContent={collapsedContent}
+        headerAccessory={(
+          <span className={css.chevronHit} onClick={toggle}>
+            <IconChevronRightOutlineRegular className={expanded ? css.chevronOpen : css.chevron} size={13} />
+          </span>
+        )}
       >
         {content}
       </DisclosureRow>

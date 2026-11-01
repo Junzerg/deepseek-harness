@@ -38,6 +38,7 @@ import { resolveSubmitMode } from '../input/submission-policy.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
 import { isImageMediaType } from '../service.ts'
 import { ContextMeter } from './ContextMeter.tsx'
+import { WorkspaceChip } from './EmptyHero.tsx'
 import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
 
@@ -50,7 +51,7 @@ export const InputBar = memo(function InputBar({
   renderSlot, useBusyEnter, useFileUploads, useNotices, useLexicon, useMenuLauncher, useStopShortcut,
   useAccess,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
-  workspacePickerOpen = false, onRequestWorkspace,
+  workspacePickerOpen = false, onRequestWorkspace, workspaceTool,
   placeholder, accessory,
 }: InputBarProps) {
   const input = useInput(s => s)
@@ -469,7 +470,7 @@ export const InputBar = memo(function InputBar({
                 onMouseDown={keepFocus}
                 onClick={onToggleCommandMenu}
               >
-                <IconPlusOutlineMedium size={14} />
+                <IconPlusOutlineMedium size={16} />
               </button>
             </Tooltip>
             <input
@@ -480,10 +481,6 @@ export const InputBar = memo(function InputBar({
               hidden
               onChange={onPickFiles}
             />
-            <div className={css.modes}>
-              {sessionId === undefined ? null : renderSlot('conversation.input.permission', { locked })}
-              {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
-            </div>
             {input === undefined || sessionId === undefined
               ? null
               : renderSlot('conversation.input.left', {})}
@@ -493,7 +490,6 @@ export const InputBar = memo(function InputBar({
               {input === undefined || sessionId === undefined
                 ? null
                 : renderSlot('conversation.input.right', {})}
-              {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
             </div>
             {input === undefined || sessionId === undefined ? null : <div className={activity ? css.activityExpanded : css.activity}>
               {renderSlot('conversation.input.activity', { locked, onActiveChange: setActivity })}
@@ -539,12 +535,34 @@ export const InputBar = memo(function InputBar({
           </div>
         </div>
       </div>
-      <div className={css.dock} data-composer-dock>
-        {variant === 'composer' && input !== undefined && sessionId !== undefined
-          ? renderSlot('conversation.composer.dock', {})
-          : null}
-        {activity ? null : <ContextMeter useProjection={useProjection} t={t} />}
-      </div>
+      {variant === 'hero' && (
+        <div className={css.heroWorkspaceRow} data-hero-tools>
+          {workspaceTool !== undefined && (
+            <WorkspaceChip
+              buttonRef={workspaceTool.buttonRef}
+              label={workspaceTool.label}
+              menuOpen={workspaceTool.menuOpen}
+              onClick={workspaceTool.onToggle}
+              t={t}
+            />
+          )}
+          {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}
+          {sessionId === undefined ? null : renderSlot('conversation.input.permission', { locked })}
+          {sessionId === undefined ? null : renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+        </div>
+      )}
+      {variant === 'composer' && sessionId !== undefined && (
+        <div className={css.composerToolsRow} data-composer-tools>
+          {renderSlot('conversation.input.plan', { locked })}
+          {renderSlot('conversation.input.permission', { locked })}
+          {renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+        </div>
+      )}
+      {variant === 'composer' ? null : (
+        <div className={css.dock} data-composer-dock>
+          {activity ? null : <ContextMeter useProjection={useProjection} t={t} />}
+        </div>
+      )}
     </div>
   )
 })
