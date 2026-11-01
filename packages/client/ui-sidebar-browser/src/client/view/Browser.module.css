@@ -11,12 +11,13 @@
 .toolbar {
   display: flex;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
   box-sizing: border-box;
-  height: 38px;
-  padding: 5px 6px;
-  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+  height: 40px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .tool {
@@ -24,8 +25,8 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   color: var(--dsw-alias-label-secondary);
   background: transparent;
@@ -34,11 +35,25 @@
   cursor: pointer;
 }
 
+.tool svg {
+  width: 14px;
+  height: 14px;
+}
+
 @media (hover: hover) {
-  .tool:hover:not(:disabled) {
+  .tool:hover:not(:disabled):not(.sandboxOff) {
     color: var(--dsw-alias-label-primary);
     background: var(--dsw-alias-interactive-bg-hover);
   }
+
+  .sandboxOff:hover {
+    background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent);
+  }
+}
+
+.tool:active:not(:disabled):not(.sandboxOff) {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-active);
 }
 
 .tool:disabled {
@@ -59,14 +74,26 @@
 
 .address {
   width: 100%;
-  height: 28px;
+  height: 24px;
   box-sizing: border-box;
-  padding: 0 34px 0 9px;
-  color: var(--dsw-alias-label-primary);
+  padding: 0 28px 0 8px;
+  color: var(--dsw-alias-label-secondary);
   font: var(--dsw-font-xxs-12);
-  background: var(--dsw-alias-bg-layer-1);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 98%, var(--dsw-alias-label-primary));
   border: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-sm);
+}
+
+@media (hover: hover) {
+  .address:hover:not(:focus) {
+    border-color: var(--dsw-alias-border-l3);
+  }
+}
+
+@media (pointer: coarse) {
+  .address {
+    font-size: 16px;
+  }
 }
 
 .addressGo {
@@ -97,7 +124,7 @@
 
 .addressChanged {
   position: absolute;
-  top: 6px;
+  top: 4px;
   right: 8px;
   padding-left: 8px;
   color: var(--dsw-alias-label-tertiary);
@@ -113,7 +140,9 @@
 }
 
 .address:focus {
-  outline: 1px solid var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-1);
+  outline: 1px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: -1px;
 }
 
@@ -245,5 +274,4 @@
 
 .titleIcon {
   flex: 0 0 auto;
-  margin-right: 4px;
 }

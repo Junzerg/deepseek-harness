@@ -9,27 +9,24 @@
   min-height: 0;
 }
 
-/* One 38px row flush under the pane's strip: the path, then the type's
-   controls at its end. With the strip's 38px above, its rule lies where the
-   conversation header's does (ui-conversation ConversationRoot `.header`,
-   76px with the same rule), so the two lines meet at the column edge.
-
-   The same row, path, and controls are drawn by the files tab
-   (ui-sidebar-files FilesBody `.header`); TODO: once the artifact and slot
-   surfaces settle, one copy in ui-primitives could serve every pane header. */
+/* Match the file tree's toolbar spacing, keeping the path flexible and the
+   compact controls on one centre line. */
 .header {
   display: flex;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
   box-sizing: border-box;
-  height: 38px;
-  padding: 0 6px 0 16px;
-  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+  height: 40px;
+  min-width: 0;
+  padding: 6px 8px 6px 16px;
+  background: var(--dsw-alias-bg-base);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .path {
-  margin-right: 12px;
+  margin-right: 6px;
+  line-height: 1.5;
 }
 
 /* Announced, not applied: the reader keeps the text they are looking at. */
@@ -270,17 +267,15 @@
   cursor: default;
 }
 
-/* Controls in the header row, sized like the docking kit's own pane controls. */
-/* The same icon button as the Sidebar's strip controls above it: a 28px
-   circle around a 15px glyph. */
+/* Match the file toolbar's 24px controls and 14px glyphs. */
 .tool {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
   color: var(--dsw-alias-label-secondary);
   line-height: 1;
   background: transparent;
@@ -290,8 +285,8 @@
 }
 
 .tool svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 @media (hover: hover) {
@@ -301,9 +296,10 @@
   }
 }
 
-.tool[data-textpreview-tool='auto-refresh'][aria-pressed='true'] {
+.tool:active,
+.tool[aria-pressed='true'] {
   color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--dsw-alias-interactive-bg-active);
 }
 .viewerTool {
   flex: none;
@@ -313,6 +309,7 @@
   overflow: hidden;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
+  line-height: 1.5;
   white-space: nowrap;
   text-overflow: ellipsis;
 }

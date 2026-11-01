@@ -259,6 +259,17 @@ body {
   --dsw-alias-file-diff-deleted-bg: rgb(252, 230, 226);
   --dsw-alias-file-diff-deleted-gutter: rgb(253, 236, 233);
   --dsw-alias-file-diff-deleted-marker: rgb(186, 39, 35);
+  /* File badges retain their format colors and white lettering in both palettes. */
+  --dsw-alias-file-badge-ink: var(--dsw-static-neutral-00);
+  --dsw-alias-file-badge-document: #2b579a;
+  --dsw-alias-file-badge-spreadsheet: #1d6f42;
+  --dsw-alias-file-badge-csv: #217346;
+  --dsw-alias-file-badge-presentation: #c43e1c;
+  --dsw-alias-file-badge-pdf: #b3392f;
+  --dsw-alias-file-badge-web: #b7791f;
+  --dsw-alias-file-badge-media: #6b7280;
+  --dsw-alias-file-badge-markdown: #475569;
+  --dsw-alias-file-badge-config: #a16207;
   --dsw-alias-state-error-primary: var(--dsw-static-red-600);
   --dsw-alias-state-error-secondary: var(--dsw-static-red-400);
   --dsw-alias-state-idle-primary: var(--dsw-static-neutral-300);

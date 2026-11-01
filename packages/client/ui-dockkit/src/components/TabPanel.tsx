@@ -10,11 +10,10 @@
  * without selecting the tab, unless another mouse button is still held.
  * The embedder's `canCloseTab`
  * governs all close routes. A pane's lone chip whose close is withheld draws
- * quiet — no capsule, no hover fill — since there is nothing to select against
- * and nothing to do to it.
+ * with a stable selected fill since there is nothing to select against.
  * Between neighbouring chips sits a slot: a fixed-width box drawing a
- * hairline, blank beside the active chip, and the drop caret when a drag
- * targets that index, so a caret never widens the row; the two end slots
+ * compact gap, and the drop caret when a drag targets that index, so a caret
+ * never widens the row; the two end slots
  * exist only while targeted. The chips sit in their own box, the strip's one
  * shrinking part: in a narrow pane their titles fade at the clipped edge down
  * to the chip's floor and then the chips scroll there, keeping the active one

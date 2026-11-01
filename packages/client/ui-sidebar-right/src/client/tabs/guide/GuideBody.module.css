@@ -119,7 +119,12 @@
    draws on currentColor, so this ink is the chip rendering's own. */
 .titleIcon {
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
+}
+
+.titleIcon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linejoin: round;
 }
 
 .entryCell { width: 380px; max-width: 100%; }

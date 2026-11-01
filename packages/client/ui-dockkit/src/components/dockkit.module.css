@@ -222,20 +222,9 @@
   outline: none;
 }
 
-/* A 38px row whose 28px content band sits at its bottom: chips fill the band,
-   so they end flush with the strip's bottom edge, and the 28px add control, the
-   28px split control, and the embedder's 28px chrome centre on the band's one
-   centre line, so chip text and control glyphs never sit at different heights.
-   The 10px above is the strip's own top margin, inside its box so the hit
-   area stays one element; the 10px at the start is the first chip's inset
-   from the edge, and the 6px at the end puts the last control's glyph 12px
-   from the edge. The strip draws no border: a body
-   that wants a rule under it draws its own. A floating panel's header is
-   this same row.
-
-   The strip never clips: the chip box below is its one shrinking part, and
-   every control after it is `flex: none`, so a narrow pane costs chips, never
-   controls. */
+/* The 28px tabs and controls share a centre line, with 7px of air above and
+   below and a hairline separating the toolbar from its content. Only the chip
+   box shrinks, keeping the controls accessible in narrow panes. */
 .tabStrip {
   display: flex;
   flex: none;
@@ -244,8 +233,10 @@
   height: 28px;
   /* The start inset is a published variable so a host that pins the surface
      against window chrome (the right sidebar fullscreen under macOS traffic
-     lights) can widen it per pane; the fallback is the design's own 10px. */
-  padding: 10px 6px 0 var(--dsh-dockkit-strip-inline-start, 10px);
+     lights) can widen it per pane. */
+  padding: 7px 8px 7px var(--dsh-dockkit-strip-inline-start, 8px);
+  background: var(--dsw-alias-bg-base);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   touch-action: none;
 }
 
@@ -324,34 +315,18 @@
   -webkit-app-region: no-drag;
 }
 
-/* The slot between two chips: a 10px box with a hairline down its centre.
-   Targeted by a drag, the same box draws the caret instead, so the chips
-   around it never move. */
+/* A compact gap between tabs also holds the drop caret without moving them. */
 .slot {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 10px;
+  width: 2px;
   height: 28px;
 }
 
-.slot::before {
-  content: '';
-  width: 0.5px;
-  height: 14px;
-  background: var(--dsw-alias-border-l4);
-}
-
-/* The active chip is a filled tab and needs no rule against it: the two
-   slots beside it go blank, so the row reads as the tab between bare
-   chips. A caret in either slot still draws. */
-.tabActive + .slot:not(.slotCaret)::before,
-.slot:not(.slotCaret):has(+ .tabActive)::before {
-  background: transparent;
-}
-
 .slotCaret::before {
+  content: '';
   width: 2px;
   height: 20px;
   background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
@@ -380,7 +355,7 @@
   user-select: none;
 }
 
-/* A flex row with a 5px gap, so an embedder's leading glyph (`renderTabTitle`)
+/* A flex row with a 6px gap, so an embedder's leading glyph (`renderTabTitle`)
    centres on the text's line rather than sitting on its baseline and keeps
    one distance from it. The clip is horizontal in intent; the line box must
    hold the descenders it would otherwise cut, hence a line-height above the
@@ -392,7 +367,7 @@
 .tabTitle {
   display: flex;
   flex: 1 1 auto;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   min-width: 0;
   overflow: hidden;
@@ -487,30 +462,28 @@
     background: var(--dsw-alias-interactive-bg-hover);
   }
 
-  .tab:hover {
+  .tab:not(.tabActive):hover {
     background: var(--dsw-alias-interactive-bg-hover);
   }
 }
 
-/* The active chip is the filled tab, in the tag fill; the rest are bare text. */
+/* Selected tabs retain their neutral fill while hovered. */
 .tabActive {
   color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-markdown-tag);
+  font-weight: 500;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, var(--dsw-alias-bg-base));
 }
 
-/* A pane's lone unclosable chip is a label, not a choice: no tab, no
-   hover fill — the primary ink on the pane's own ground. Its title never
-   yields to a close control, so it keeps the clipped fade alone. */
+/* A lone unclosable tab keeps its selected fill and has no close-button fade. */
 .tab.tabQuiet {
   color: var(--dsw-alias-label-primary);
-  background: transparent;
   cursor: default;
 }
 
 @media (hover: hover) {
   .tab.tabQuiet:hover {
     color: var(--dsw-alias-label-primary);
-    background: transparent;
+    background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, var(--dsw-alias-bg-base));
     cursor: default;
   }
 }

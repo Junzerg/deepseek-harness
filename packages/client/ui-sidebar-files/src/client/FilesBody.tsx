@@ -16,7 +16,7 @@ import type {
   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore, TranslateNS,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import {
-  FileTypeIcon, IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, Tooltip, classifyFileType,
+  IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, Tooltip, classifyFileType, fileExtension,
   IconPauseOutlineRegular, IconPlayOutlineRegular, PathLabel,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
@@ -93,10 +93,17 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
     )
   }
   if (entry.type === 'file') {
+    const kind = classifyFileType(entry.name)
+    const extension = fileExtension(entry.name).toLowerCase()
+    const label = kind === 'image' ? tree.t('fileBadge.image')
+      : kind === 'markdown' ? tree.t('fileBadge.markdown')
+        : extension === 'yaml' || extension === 'yml' ? tree.t('fileBadge.yaml')
+          : extension.length > 0 && extension.length <= 4 ? extension.toUpperCase()
+            : tree.t('fileBadge.generic')
     return (
       <li className={css.item} data-files-entry="file" data-files-path={path}>
         <button type="button" className={css.row} onClick={() => { tree.onOpen(path) }}>
-          <FileTypeIcon kind={classifyFileType(entry.name)} size={16} className={css.fileIcon} />
+          <span className={css.fileIcon} aria-hidden="true" data-file-badge={kind} data-file-extension={extension}>{label}</span>
           <span className={css.name}>{entry.name}</span>
         </button>
       </li>

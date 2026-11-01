@@ -216,7 +216,7 @@ async function expectTitleAlignment(title: Locator): Promise<void> {
       centreOffset: Math.abs(iconBox.y + iconBox.height / 2 - textBox.y - textBox.height / 2),
     }
   })
-  expect(geometry.gap).toBeCloseTo(5, 2)
+  expect(geometry.gap).toBeCloseTo(6, 2)
   expect(geometry.centreOffset).toBeLessThan(1)
 }
 
@@ -988,7 +988,7 @@ describe('web e2e: shipped right Sidebar', () => {
       await expect.poll(async () => await tabTitles(column)).toEqual(['Start'])
 
       // The guide standing as the docked surface's only tab draws no close
-      // control, sits quiet (no capsule, no hover fill), and a secondary press
+      // control, keeps its selected fill, and a secondary press
       // opens no menu: an empty menu never shows.
       expect(await column.locator('[data-dockkit-tab-close]').count()).toBe(0)
       expect(await column.locator('[data-dockkit-tab-quiet]').count()).toBe(1)

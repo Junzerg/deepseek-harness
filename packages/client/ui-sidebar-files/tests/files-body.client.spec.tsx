@@ -53,9 +53,8 @@ describe('FilesBody', () => {
     expect(path?.getAttribute('title')).toBe(ROOT)
     expect([...path?.firstElementChild?.children ?? []].map(span => span.textContent)).toEqual(['/work/', 'app'])
     expect(names(view.container)).toEqual([`${ROOT}/src`, `${ROOT}/.env`, `${ROOT}/pipe`, `${ROOT}/README.md`])
-    const envIcon = view.container.querySelector(`[data-files-path="${ROOT}/.env"] svg`)?.innerHTML
-    const readmeIcon = view.container.querySelector(`[data-files-path="${ROOT}/README.md"] svg`)?.innerHTML
-    expect(envIcon).not.toBe(readmeIcon)
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/.env"] [data-file-badge]`)?.textContent).toBe('ENV')
+    expect(view.container.querySelector(`[data-files-path="${ROOT}/README.md"] [data-file-badge]`)?.textContent).toBe('MD')
   })
 
   it('heads a separator-only root by the root itself, since it has no final segment', async () => {
