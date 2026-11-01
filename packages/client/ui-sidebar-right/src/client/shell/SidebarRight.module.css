@@ -1,8 +1,7 @@
 /*
  * The Sidebar's own chrome only: the panel box, its two strip-end controls, and
  * the placeholder tab bodies. Everything inside the split tree is styled by the
- * docking kit; the expand button in the conversation header has its own sheet.
- * Tokens only.
+ * docking kit. Tokens only.
  */
 
 /*

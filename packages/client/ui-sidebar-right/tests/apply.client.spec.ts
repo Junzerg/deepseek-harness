@@ -23,7 +23,6 @@ import type { createSidebarRightStore } from '../src/client/stores.ts'
 import * as sidebarStores from '../src/client/stores.ts'
 import { RightbarSeat } from '../src/client/shell/SidebarRight.tsx'
 import { RightbarRoot } from '../src/client/shell/RightbarRoot.tsx'
-import { ExpandButton } from '../src/client/shell/ExpandButton.tsx'
 import { GuideBody } from '../src/client/tabs/guide/GuideBody.tsx'
 import { GuideTitle } from '../src/client/tabs/guide/GuideTitle.tsx'
 import { GUIDE_ID } from '../src/client/tabs/guide/definition.ts'
@@ -129,13 +128,12 @@ describe('ui-sidebar-right apply', () => {
     expect(guide?.id).toBe(GUIDE_ID)
     expect(guide?.priority).toBe('builtin')
     expect(guide?.title('sidebar://guide')).toBe('tab.guide.title')
-    // Five registrations: the root and panel seats, the header's corner seat,
-    // and the guide body and chip title under the guide implementation's id.
-    // The guide body binds the dictionary for its More card; the chip title draws no product copy.
+    // Four registrations: the root and panel seats, and the guide body and chip
+    // title under the guide implementation's id. The guide body binds the
+    // dictionary for its More card; the chip title draws no product copy.
     expect(registered.map(entry => [entry.name, entry.key, entry.locale, entry.component])).toEqual([
       ['rightbar', undefined, undefined, RightbarRoot],
       ['rightbar.session', undefined, 'sidebarRight', RightbarSeat],
-      ['conversation.session.header.corner', undefined, 'sidebarRight', ExpandButton],
       ['sidebar.right.pane.tab', GUIDE_ID, 'sidebarRight', GuideBody],
       ['sidebar.right.pane.tab.title', GUIDE_ID, undefined, GuideTitle],
     ])
@@ -144,9 +142,7 @@ describe('ui-sidebar-right apply', () => {
       'sidebar.right.pane.tab', 'sidebar.right.pane.tab.title', 'sidebar.right.tab.menu.item',
     ])
     expect(seat('sidebar.right.pane.tab').children).toMatchObject({ 'sidebar.right.tab.guide': { kind: 'chain', scope: 'session' } })
-    // Both seats read one store: the button only needs to know whether the panel is expanded.
     expect(seat('rightbar.session').store).toBeDefined()
-    expect(seat('conversation.session.header.corner').store).toBe(seat('rightbar.session').store)
   })
 
   it('names the selected Session as on screen while the Conversation fills the main column', async () => {
@@ -190,7 +186,6 @@ describe('ui-sidebar-right apply', () => {
     vi.stubGlobal('document', { activeElement: null, querySelectorAll: () => [] })
     onTestFinished(() => { vi.unstubAllGlobals() })
     injected.toggleFullscreen()
-    expect(injectedOf(seat('conversation.session.header.corner'))).toHaveProperty('hooks.shortcuts')
     current.set({ key: SESSION })
     injected.openTab('guide', { revealIfOpened: false })
     const surface = instance.getSnapshot().bySession[SESSION]
@@ -221,8 +216,6 @@ describe('ui-sidebar-right apply', () => {
   it('adopts each session\'s store instance as the runtime mints it, so a tab\'s own actions land with no seat bound', async () => {
     const { ctx, resources, seat } = await boot()
     const handle = seat('rightbar.session').store as ReturnType<typeof createSidebarRightStore>
-    // Both seats declare the same wrapped handle, so either minting adopts.
-    expect(seat('conversation.session.header.corner').store).toBe(handle)
     const instance = handle.create(SESSION)
     instance.actions.open(SESSION)
     // The first expansion seeds the guide; a second tab beside it makes it closable.
@@ -338,6 +331,6 @@ describe('ui-sidebar-right apply', () => {
     expect(dictionaries.size).toBe(0)
     await ctx.plugin({ inject: [...inject], apply }).await()
     expect(ctx.sidebarRightTabs.get('guide')?.id).toBe(GUIDE_ID)
-    expect(registered).toHaveLength(5)
+    expect(registered).toHaveLength(4)
   })
 })

@@ -16,11 +16,10 @@
  *
  * The panel has no header of its own: its two controls — presentation switch
  * and collapse — ride the docking kit's chrome seat at the end of the top-right
- * pane's tab strip, so the strip is the panel's whole top edge. The way back in
- * while collapsed is not here either: it is one button in the conversation
- * header (`ExpandButton.tsx`), because it exists only while this panel is
- * hidden. Floating panels remain in the same content tree; untransformed
- * ancestors let their fixed-position frames cross the column and conversation.
+ * pane's tab strip, so the strip is the panel's whole top edge. Reopening while
+ * collapsed is owned by the workbench topbar, not by this panel. Floating
+ * panels remain in the same content tree; untransformed ancestors let their
+ * fixed-position frames cross the column and conversation.
  *
  * Tab bodies do not live here. Each one is a registration under its type's kind,
  * dispatched through the keyed `sidebar.right.pane.tab` seat (and a live chip

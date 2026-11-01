@@ -15,7 +15,7 @@ The right Sidebar: where the docking kit meets this product. It holds one dockin
 
 - [What lives here, and what does not](#what-lives-here-and-what-does-not)
 - [Presentations](#presentations)
-- [The expand button](#the-expand-button)
+- [Reopening the panel](#reopening-the-panel)
 - [State](#state)
 - [Extension seats](#extension-seats)
 - [`ctx.sidebarRight`](#ctxsidebarright)
@@ -49,12 +49,12 @@ The seat reports presentation through `ctx.layout.openRightbar(track, fullscreen
 
 The panel has no header row. Its two controls — the presentation switch and the collapse button — ride the kit's chrome seat at the far end of the top-right pane's tab strip, so the strip is the panel's whole top edge. Each strip reads, left to right: the tab capsules with close controls where allowed, the add control (drawn only while that pane holds no guide tab; it opens the guide there through `ctx.sidebarRight.openTab`), the pane's split control, and in the top-right pane the two panel controls. Only the chips give way in a narrow pane; the controls after them never shrink or clip.
 
-<a id="the-expand-button"></a>
-## The expand button
+<a id="reopening-the-panel"></a>
+## Reopening the panel
 
 The shortcut reference includes right-sidebar toggle, split and panel fullscreen commands. The same effective binding appears on the corresponding controls. Split and fullscreen require focus within a visible dock pane; conversation focus leaves them unavailable. Split remains visible when unavailable; its focusable tooltip shows the current binding and explains the pane limit or width requirement. Files, browser, and terminal providers contribute their own commands. Guide buttons display effective shortcuts as unboxed text inline without duplicate tooltips.
 
-While the panel is hidden, one button in the conversation header's corner seat (`conversation.session.header.corner`, past the utilities' right edge and level with the Session log control) is the way back in. Its glyph is the left sidebar's collapse icon mirrored. It uses the shared compact Button, matching the adjacent More action’s radius and hover fill. It shares the panel's store (the slot runtime allows one handle across two same-scope seats); while the panel is shown it renders nothing, and the corner seat collapses with it. A collapsed Sidebar therefore costs the conversation nothing: no rail, no width, and the transcript's scrollbar stays at the column's edge. Without a session there is no button and no panel.
+While the panel is hidden, the workbench topbar's expand control is the way back in. A collapsed Sidebar therefore costs the conversation nothing: no rail, no width, and the transcript's scrollbar stays at the column's edge. Without a session on screen the topbar control does nothing.
 
 The panel takes the conversation's ground colour and content font sizes rather than a raised layer of its own: it is a column of the page, not a card over it.
 

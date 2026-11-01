@@ -56,6 +56,7 @@ function mount(overrides: {
     usePageTitles: (select: (pages: readonly { key: string; label: string }[]) => unknown) => (
       select(overrides.pages ?? [])
     ),
+    useShortcuts: (select: (entries: readonly { id: string }[]) => unknown) => select([]),
     openSession,
     toggleRightbar,
     t: (key: keyof typeof zh) => zh[key],
@@ -94,12 +95,16 @@ describe('WorkbenchTopbar', () => {
     fireEvent.click(screen.getByRole('button', { name: '搜索' }))
     expect(openSession).not.toHaveBeenCalled()
     expect(toggleRightbar).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: '展开侧栏' }))
+    const expand = screen.getByRole('button', { name: '展开侧栏' })
+    expect(expand.hasAttribute('data-sidebar-right-expand')).toBe(true)
+    fireEvent.click(expand)
     expect(toggleRightbar).toHaveBeenCalledOnce()
     cleanup()
 
     const collapsed = mount({ rightbarShown: true })
-    fireEvent.click(screen.getByRole('button', { name: '收起侧栏' }))
+    const collapse = screen.getByRole('button', { name: '收起侧栏' })
+    expect(collapse.hasAttribute('data-sidebar-right-expand')).toBe(false)
+    fireEvent.click(collapse)
     expect(collapsed.toggleRightbar).toHaveBeenCalledOnce()
   })
 

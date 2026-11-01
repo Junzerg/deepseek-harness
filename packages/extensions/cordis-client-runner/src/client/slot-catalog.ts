@@ -178,7 +178,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'conversation.chat.node\' (client-ui-chat), so it exists while that entry is mounted',
     occupants: [
-      'client-ui-message-feedback MessageFeedbackActions id \'feedback\'',
+      'client-ui-message-feedback HiddenMessageRatings id \'feedback\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.chat.assistant-actions\', () => ctx.slots.register(\n      { name: \'conversation.chat.assistant-actions\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -670,7 +670,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Resident composer body, including the no-Session inert state.',
     registerOptions: [],
     ownerProps: [
-      '/** Owner share of the resident composer bar. */\nexport interface ComposerBarOwnerProps {\n  /** Hero uses centered placement; composer uses the active bottom placement. */\n  variant: \'hero\' | \'composer\'\n  /** A feature-owned reason that makes message input inert while leaving model selection live. */\n  blocked?: { readonly reason: string }\n  /** Lock all message actions while preserving the resident composer surface. */\n  disabled?: boolean\n  /** Whether the shared Workspace picker is expanded. */\n  workspacePickerOpen?: boolean\n  /** Open the Workspace picker from the inert composer surface. */\n  onRequestWorkspace?: () => void\n  placeholder?: string\n  /** Optional content rendered above the composer surface. */\n  accessory?: ReactNode\n}',
+      '/** Owner share of the resident composer bar. */\nexport interface ComposerBarOwnerProps {\n  /** Hero uses centered placement; composer uses the active bottom placement. */\n  variant: \'hero\' | \'composer\'\n  /** A feature-owned reason that makes message input inert while leaving model selection live. */\n  blocked?: { readonly reason: string }\n  /** Lock all message actions while preserving the resident composer surface. */\n  disabled?: boolean\n  /** Whether the shared Workspace picker is expanded. */\n  workspacePickerOpen?: boolean\n  /** Open the Workspace picker from the inert composer surface. */\n  onRequestWorkspace?: () => void\n  /**\n   * Blank-home workspace chip. It sits under the card with permission and model.\n   * The picker stays on the conversation shell and anchors through `buttonRef`.\n   */\n  workspaceTool?: {\n    label?: string\n    menuOpen: boolean\n    buttonRef: RefObject<HTMLButtonElement>\n    onToggle: () => void\n  }\n  placeholder?: string\n  /** Optional content rendered above the composer surface. */\n  accessory?: ReactNode\n}',
     ],
     ownerPropsReferences: [
       'Workspace',
@@ -1740,10 +1740,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     hookContext: '',
     slotInject: '',
     declaredBy: 'an entry in \'conversation.session.header\' (client-ui-conversation), so it exists while that entry is mounted',
-    occupants: [
-      'client-ui-sidebar-right ExpandButton',
-    ],
-    replaceRisk: 'shadows-shipped-ui',
+    occupants: [],
+    replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation.session.header.corner\', () => ctx.slots.register(\n      { name: \'conversation.session.header.corner\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
     source: 'packages/client/ui-conversation/src/client/contract/slots.ts:270',
   },

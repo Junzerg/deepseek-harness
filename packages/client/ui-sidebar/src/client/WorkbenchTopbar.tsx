@@ -1,10 +1,11 @@
 /** Center-column top bar: page title, task list, and the right-sidebar toggle. */
 import { useState } from 'react'
 import {
-  IconPanelLeftOutlineRegular, IconQueueOutlineRegular, IconSearchOutlineRegular, Menu,
+  IconPanelLeftOutlineRegular, IconQueueOutlineRegular, IconSearchOutlineRegular, Menu, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
+import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { SidebarKey } from './locales.ts'
 import type { SidebarPanelMetadata } from './contract/slots.ts'
@@ -36,6 +37,8 @@ export interface TopbarInjected {
     archivedSessionIds: ObservableSnapshot<readonly string[]>
     /** Names declared by the main panels currently occupying the center. */
     pageTitles: ObservableSnapshot<readonly MainPageTitle[]>
+    /** Shortcut catalog, so the right-sidebar toggle can show its binding. */
+    shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>
   }
 }
 
@@ -89,7 +92,7 @@ function equalPages(left: readonly MainPageTitle[], right: readonly MainPageTitl
  */
 export function WorkbenchTopbar({
   rightbarShown, usePanelInfo, useSessions, usePanels, useArchivedSessionIds, usePageTitles,
-  openSession, toggleRightbar, t,
+  useShortcuts, openSession, toggleRightbar, t,
 }: WorkbenchTopbarProps) {
   const panelId = usePanelInfo(info => info.activePanelId)
   const panels = usePanels(list => list)
@@ -104,6 +107,7 @@ export function WorkbenchTopbar({
   }), equalTasks)
   const archived = useArchivedSessionIds(ids => ids, equalIds)
   const pages = usePageTitles(list => list, equalPages)
+  const toggle = useShortcuts(entries => entries.find(entry => entry.id === 'sidebar.right.toggle'))
   const visibleTasks = tasks.filter(task => !archived.includes(task.id))
   const slotKey = panelId === null ? 'conversation' : panelId
   const slotTitle = pages.find(page => page.key === slotKey)?.label
@@ -115,6 +119,7 @@ export function WorkbenchTopbar({
         ? ''
         : panelTitle(slotKey, panels, t)
   const [tasksOpen, setTasksOpen] = useState(false)
+  const rightbarLabel = t(rightbarShown ? 'topbar.collapse' : 'topbar.expand')
   return (
     <header className={css.bar} data-window-drag data-workbench-topbar="">
       <button type="button" className={css.button} data-topbar-search="">
@@ -145,10 +150,18 @@ export function WorkbenchTopbar({
           </button>
         )}
       />
-      <button type="button" className={css.button} onClick={toggleRightbar}>
-        <IconPanelLeftOutlineRegular className={css.expandIcon} size={14} />
-        {t(rightbarShown ? 'topbar.collapse' : 'topbar.expand')}
-      </button>
+      <Tooltip label={rightbarLabel} shortcutKeys={toggle?.keys} side="bottom" delayMs={500}>
+        <button
+          type="button"
+          className={css.button}
+          aria-keyshortcuts={toggle?.aria}
+          data-sidebar-right-expand={rightbarShown ? undefined : ''}
+          onClick={toggleRightbar}
+        >
+          <IconPanelLeftOutlineRegular className={css.expandIcon} size={14} />
+          {rightbarLabel}
+        </button>
+      </Tooltip>
     </header>
   )
 }

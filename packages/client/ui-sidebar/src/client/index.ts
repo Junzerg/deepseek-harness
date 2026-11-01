@@ -147,7 +147,7 @@ export function apply(ctx: ClientContext): void {
       if (sidebar === undefined || sidebar.commandTarget(null) === undefined) return
       sidebar.toggleExpanded()
     },
-    hooks: { panels, archivedSessionIds, pageTitles },
+    hooks: { panels, archivedSessionIds, pageTitles, shortcuts: ctx.shortcuts.catalog },
   })
   ctx.slots.inject('shell.topbar', () => ctx.slots.register({
     name: 'shell.topbar',

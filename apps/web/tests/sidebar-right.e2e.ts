@@ -114,7 +114,7 @@ async function holdPanelSlide(panel: Locator) {
   })
 }
 
-/** The expand button in the conversation header, present only while collapsed. */
+/** The workbench topbar expand control, present only while the panel is collapsed. */
 function expandOf(page: Page): Locator {
   return page.locator('[data-sidebar-right-expand]')
 }
@@ -125,7 +125,7 @@ function expandOf(page: Page): Locator {
  * These cases share one page and run in order, so an earlier one may have left
  * the panel collapsed; a case that needs tabs says so rather than inheriting
  * whatever the previous one happened to leave. The way in while collapsed is the
- * header's expand button, which lives in the conversation, not the column.
+ * workbench topbar's expand control.
  */
 async function ensureExpanded(page: Page, column: Locator): Promise<void> {
   if (await column.locator('[data-sidebar-right-open]').count() > 0) return
