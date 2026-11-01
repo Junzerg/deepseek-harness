@@ -170,7 +170,7 @@ describe('ui-sidebar apply', () => {
     const archived = createSnapshotStore({ archivedSessionIds: ['old'] as readonly string[] })
     const b = await bench()
     const toggleExpanded = vi.fn()
-    const commandTarget = vi.fn(() => ({}))
+    const commandTarget = vi.fn((): object | undefined => ({}))
     b.ctx.provide('workspaces', { list: archived } as never)
     b.ctx.provide('sidebarRight', { toggleExpanded, commandTarget } as never)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
